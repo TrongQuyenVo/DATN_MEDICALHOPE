@@ -4,6 +4,15 @@ const patientController = require("../controllers/patientController");
 
 const router = express.Router();
 
+// 1. Tạo hồ sơ bệnh nhân (chỉ patient sau khi đăng ký)
+router.post(
+  "/",
+  auth,
+  authorize("patient"),
+  patientController.createPatientProfile
+);
+
+// 2. Lấy & cập nhật profile cá nhân
 router.get(
   "/profile",
   auth,
@@ -18,6 +27,7 @@ router.put(
   patientController.updatePatientProfile
 );
 
+// 3. Admin/Charity/Doctor: lấy danh sách bệnh nhân
 router.get(
   "/",
   auth,
@@ -25,6 +35,7 @@ router.get(
   patientController.getAllPatients
 );
 
+// 4. Xác minh bệnh nhân
 router.patch(
   "/:id/verify",
   auth,

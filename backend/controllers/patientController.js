@@ -1,5 +1,44 @@
 const Patient = require("../models/Patient");
 
+// Create patient profile (after user registers as patient)
+exports.createPatientProfile = async (req, res) => {
+  try {
+    const { economicStatus, medicalHistory, currentCondition, supportNeeded } = req.body;
+
+    // Kiểm tra xem đã tồn tại profile chưa
+    const existingPatient = await Patient.findOne({ userId: req.user._id });
+    if (existingPatient) {
+      return res.status(400).json({
+        success: false,
+        message: "Patient profile already exists",
+      });
+    }
+
+    const patient = await Patient.create({
+      userId: req.user._id,
+      economicStatus,
+      medicalHistory,
+      currentCondition,
+      supportNeeded,
+      isVerified: false, // Mặc định chưa xác minh
+    });
+
+    await patient.populate("userId", "fullName email phone avatar");
+
+    res.status(201).json({
+      success: true,
+      message: "Patient profile created successfully",
+      patient,
+    });
+  } catch (error) {
+    console.error("Create patient profile error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
 // Get patient profile
 exports.getPatientProfile = async (req, res) => {
   try {
@@ -58,8 +97,6 @@ exports.updatePatientProfile = async (req, res) => {
 };
 
 // Get all patients (for admin/charity/doctor)
-// controllers/patientController.js
-
 exports.getAllPatients = async (req, res) => {
   try {
     const {
@@ -76,14 +113,10 @@ exports.getAllPatients = async (req, res) => {
     if (verified !== undefined) query.isVerified = verified === "true";
     if (economicStatus) query.economicStatus = economicStatus;
 
-    // THÊM FILTER THEO NGÀY
     if (createdAfter || createdBefore) {
       query.createdAt = {};
-      if (createdAfter) {
-        query.createdAt.$gte = new Date(createdAfter);
-      }
+      if (createdAfter) query.createdAt.$gte = new Date(createdAfter);
       if (createdBefore) {
-        // Đặt trước 1 ngày để bao gồm cả ngày hiện tại
         const end = new Date(createdBefore);
         end.setHours(23, 59, 59, 999);
         query.createdAt.$lte = end;
@@ -91,7 +124,10 @@ exports.getAllPatients = async (req, res) => {
     }
 
     const patients = await Patient.find(query)
-      .populate("userId", "fullName email phone avatar")
+      .populate({
+        path: "userId",
+        select: "fullName email phone avatar profile", // THÊM profile
+      })
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
@@ -110,10 +146,7 @@ exports.getAllPatients = async (req, res) => {
     });
   } catch (error) {
     console.error("Get patients error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 

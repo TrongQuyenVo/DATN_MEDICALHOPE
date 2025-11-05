@@ -71,19 +71,12 @@ export function Header() {
           <Button
             variant="ghost"
             size="icon"
-            className="relative text-muted-foreground hover:text-foreground"
-            onClick={() => navigate('/notifications')}
+            disabled
+            className="relative text-muted-foreground opacity-50 cursor-not-allowed"
           >
             <Bell className="h-5 w-5" />
-            {unreadCount > 0 && (
-              <Badge
-                variant="destructive"
-                className="absolute -right-1 -top-1 h-5 min-w-[1.25rem] rounded-full px-1 text-xs"
-              >
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </Badge>
-            )}
           </Button>
+
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

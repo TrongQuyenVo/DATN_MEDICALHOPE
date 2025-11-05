@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { motion } from 'framer-motion';
 import { TrendingUp, Users, Heart, Activity, CalendarDays, DollarSign, Target, Award } from 'lucide-react';
 import { useTranslation } from 'react-i18next';

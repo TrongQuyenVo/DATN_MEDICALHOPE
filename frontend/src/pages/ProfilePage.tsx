@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/stores/authStore";
 import { useEffect, useState, useRef } from "react";
@@ -5,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Camera, User, Upload, X } from "lucide-react";
+import { Camera, User, Upload, Heart } from "lucide-react";
 import { usersAPI } from "@/lib/api";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
@@ -23,14 +24,13 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isAdmin = user?.role === 'admin' || user?.role === 'charity_admin';
+  const isPatient = user?.role === 'patient';
 
-  // 🆕 XỬ LÝ URL AVATAR TỪ BACKEND
+  // XỬ LÝ URL AVATAR
   const API_SERVER = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/api\/?$/, '');
-
   const getAvatarUrl = (avatarPath: string | null | undefined): string | null => {
     if (!avatarPath) return null;
     if (avatarPath.startsWith('http')) return avatarPath;
-    // đảm bảo không có double slash
     const prefix = API_SERVER.endsWith('/') ? API_SERVER.slice(0, -1) : API_SERVER;
     return `${prefix}${avatarPath.startsWith('/') ? '' : '/'}${avatarPath}`;
   };
@@ -48,17 +48,16 @@ export default function ProfilePage() {
           address: user.profile?.address || "",
           insurance: user.profile?.insurance || "",
           occupation: user.profile?.occupation || "",
+          condition: user.profile?.condition || "", // LẤY CONDITION
         },
       });
 
-      // 🆕 XỬ LÝ AVATAR URL
       const avatarUrl = getAvatarUrl(user.avatar);
       setAvatarPreview(avatarUrl);
       setAvatarError(false);
     }
   }, [user]);
 
-  // 🆕 RESET AVATAR ERROR KHI THAY ĐỔI
   useEffect(() => {
     if (avatarPreview) {
       const img = new Image();
@@ -91,33 +90,29 @@ export default function ProfilePage() {
     setFormData(prev => ({ ...prev, avatar: file }));
   };
 
-  // 🆕 GỘP AVATAR VÀ DỮ LIỆU KHÁC TRONG 1 REQUEST multipart/form-data
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     setLoading(true);
     try {
       let res;
-      // nếu có avatar, gửi multipart
       if (formData.avatar && typeof formData.avatar === 'object') {
         setUploading(true);
         const fd = new FormData();
         fd.append('avatar', formData.avatar);
         fd.append('fullName', formData.fullName || '');
         fd.append('phone', formData.phone || '');
-        // gửi profile như chuỗi JSON để backend parse
         fd.append('profile', JSON.stringify({
           dateOfBirth: formData.profile?.dateOfBirth || '',
           gender: formData.profile?.gender || '',
           address: formData.profile?.address || '',
           insurance: formData.profile?.insurance || '',
           occupation: formData.profile?.occupation || '',
+          condition: formData.profile?.condition || '', // GỬI CONDITION
         }));
 
         res = await usersAPI.updateProfile(fd);
         setUploading(false);
       } else {
-        // bình thường gửi json
         const payload = {
           fullName: formData.fullName,
           phone: formData.phone,
@@ -127,13 +122,13 @@ export default function ProfilePage() {
             address: formData.profile?.address || '',
             insurance: formData.profile?.insurance || '',
             occupation: formData.profile?.occupation || '',
+            condition: formData.profile?.condition || '',
           },
         };
         res = await usersAPI.updateProfile(payload);
       }
 
       toast.success("Cập nhật hồ sơ thành công!");
-      // cập nhật store và avatar preview từ backend (nếu có)
       updateUser(res.data.user);
       const newAvatarUrl = getAvatarUrl(res.data.user.avatar);
       setAvatarPreview(newAvatarUrl);
@@ -149,7 +144,7 @@ export default function ProfilePage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    if (["dateOfBirth", "gender", "address", "insurance", "occupation"].includes(name)) {
+    if (["dateOfBirth", "gender", "address", "insurance", "occupation", "condition"].includes(name)) {
       setFormData((prev: any) => ({
         ...prev,
         profile: { ...prev.profile, [name]: value },
@@ -233,7 +228,6 @@ export default function ProfilePage() {
         </CardHeader>
 
         <CardContent>
-          {/* ADMIN / CHARITY_ADMIN: Chỉ xem cơ bản */}
           {isAdmin ? (
             <div className="space-y-4">
               <div className="grid sm:grid-cols-2 gap-4">
@@ -275,7 +269,9 @@ export default function ProfilePage() {
               <div className="grid sm:grid-cols-2 gap-4 pt-6 border-t">
                 <div>
                   <p className="text-sm text-muted-foreground">Ngày sinh</p>
-                  <p className="font-medium">
+                  <p className="
+
+font-medium">
                     {formData.profile.dateOfBirth
                       ? format(new Date(formData.profile.dateOfBirth), "dd/MM/yyyy")
                       : "—"}
@@ -305,6 +301,18 @@ export default function ProfilePage() {
                   <p className="text-sm text-muted-foreground">Nghề nghiệp</p>
                   <p className="font-medium">{formData.profile.occupation || "—"}</p>
                 </div>
+
+                {/* CHỈ HIỆN CHO BỆNH NHÂN */}
+                {isPatient && (
+                  <div>
+                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                      Tình trạng bệnh
+                    </p>
+                    <p className="font-medium">
+                      {formData.profile.condition || "Chưa cập nhật"}
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="pt-6 flex justify-end">
@@ -372,6 +380,21 @@ export default function ProfilePage() {
                   <label className="text-sm font-medium">Nghề nghiệp</label>
                   <Input name="occupation" value={formData.profile.occupation} onChange={handleChange} />
                 </div>
+
+                {/* CHỈ HIỆN CHO BỆNH NHÂN */}
+                {isPatient && (
+                  <div>
+                    <label className="text-sm font-medium flex items-center gap-1">
+                      Tình trạng bệnh
+                    </label>
+                    <Input
+                      name="condition"
+                      placeholder="VD: Tiểu đường type 2, Ung thư phổi, Tim mạch..."
+                      value={formData.profile.condition}
+                      onChange={handleChange}
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="pt-6 flex justify-end gap-3">

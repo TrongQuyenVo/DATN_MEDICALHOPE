@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -222,32 +223,35 @@ export default function BookAppointmentForm({ open, onOpenChange, doctor, onSucc
                   },
                   {}
                 )
-              ).map(([date, slots]) => (
-                <div key={date} className="border p-3 rounded-xl">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Calendar className="h-4 w-4 text-primary" />
-                    <span className="font-semibold">{date}</span>
+              ).map(([date, slots]) => {
+                const slotArray = slots as any[];
+                return (
+                  <div key={date} className="border p-3 rounded-xl">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Calendar className="h-4 w-4 text-primary" />
+                      <span className="font-semibold">{date}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {slotArray.flatMap((slot: any) =>
+                        slot.times.map((time: string, idx: number) => (
+                          <Badge
+                            key={`${slot.date}-${time}-${idx}`}
+                            onClick={() =>
+                              setValue("slotId", `${slot.date}-${time}`)
+                            }
+                            className={`cursor-pointer px-3 py-1 rounded-lg text-sm ${watch("slotId") === `${slot.date}-${time}`
+                              ? "bg-primary text-white"
+                              : "bg-muted text-black hover:bg-primary/10"
+                              }`}
+                          >
+                            {time}
+                          </Badge>
+                        ))
+                      )}
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {slots.flatMap((slot: any) =>
-                      slot.times.map((time: string, idx: number) => (
-                        <Badge
-                          key={`${slot.date}-${time}-${idx}`}
-                          onClick={() =>
-                            setValue("slotId", `${slot.date}-${time}`)
-                          }
-                          className={`cursor-pointer px-3 py-1 rounded-lg text-sm ${watch("slotId") === `${slot.date}-${time}`
-                            ? "bg-primary text-white"
-                            : "bg-muted text-black hover:bg-primary/10"
-                            }`}
-                        >
-                          {time}
-                        </Badge>
-                      ))
-                    )}
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
             {errors.slotId && (
               <p className="text-sm text-destructive">

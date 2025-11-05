@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { motion } from 'framer-motion';
 import {
   Calendar,
@@ -32,16 +33,7 @@ export default function DoctorDashboard() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
 
-  // === Nếu chưa đăng nhập
-  if (!user) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 space-y-4">
-        <AlertCircle className="h-12 w-12 text-destructive" />
-        <h3 className="text-lg font-semibold">Vui lòng đăng nhập</h3>
-        <p className="text-muted-foreground">Bạn cần đăng nhập để xem dashboard bác sĩ.</p>
-      </div>
-    );
-  }
+  // Login check moved below so hooks (useQuery) are always called in the same order.
 
   // === 1. Lấy hồ sơ bác sĩ
   const {
@@ -84,9 +76,22 @@ export default function DoctorDashboard() {
 
   const todayAppointments = allAppointments.filter((apt: any) => {
     if (!apt?.scheduledTime) return false;
-    const aptDate = format(new Date(apt.scheduledTime), 'yyyy-MM-dd');
-    return aptDate === todayStr && ['confirmed', 'scheduled'].includes(apt.status);
+    const aptDate = new Date(apt.scheduledTime);
+    return format(aptDate, 'yyyy-MM-dd') === todayStr && ['confirmed', 'scheduled'].includes(apt.status);
   });
+
+  // === Nếu chưa đăng nhập
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 space-y-4">
+        <AlertCircle className="h-12 w-12 text-destructive" />
+        <h3 className="text-lg font-semibold">Vui lòng đăng nhập</h3>
+        <p className="text-muted-foreground">Bạn cần đăng nhập để xem dashboard bác sĩ.</p>
+      </div>
+    );
+  }
+
+  // === Tính toán thống kê
 
   const weekAppointments = allAppointments.filter((apt: any) => {
     if (!apt?.scheduledTime) return false;

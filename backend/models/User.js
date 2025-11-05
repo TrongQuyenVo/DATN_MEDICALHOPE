@@ -11,6 +11,11 @@ const ProfileSchema = new mongoose.Schema({
   address: String,
   insurance: String,
   occupation: String,
+  condition: {
+    type: String,
+    trim: true,
+    default: null, // null = chưa cập nhật
+  },
 });
 
 const UserSchema = new mongoose.Schema(

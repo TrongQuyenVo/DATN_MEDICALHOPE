@@ -15,6 +15,7 @@ export interface User {
     address?: string;
     insurance?: string;
     occupation?: string;
+    condition?: string;
   };
 }
 

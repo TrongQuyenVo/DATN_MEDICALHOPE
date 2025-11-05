@@ -1,3 +1,4 @@
+// components/donations/DonationForm.tsx
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
@@ -30,20 +31,29 @@ import { ENV } from "@/config/ENV";
 import { sortObject } from "@/utils/sortObject";
 import { calculateVnpSecureHash } from "@/utils/calculateVnpSecureHash";
 import { useAuthStore } from "@/stores/authStore";
+import { assistanceAPI, donationsAPI } from "@/lib/api";
 
-interface Campaign {
-  id: string;
+interface PatientAssistance {
+  _id: string;
   title: string;
   description: string;
-  target: number;
-  raised: number;
-  image?: string;
+  requestedAmount: number;
+  raisedAmount: number;
+  medicalCondition: string;
+  urgency: string;
+  patientId: {
+    userId: {
+      fullName: string;
+      phone: string;
+      profile: { address?: string };
+    };
+  };
 }
 
 interface DonationFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  campaign?: Campaign;
+  assistanceId?: string; // Thay campaign bằng assistanceId
 }
 
 interface FormData {
@@ -51,7 +61,7 @@ interface FormData {
   donorName: string;
   donorEmail: string;
   donorPhone: string;
-  message?: string;
+  message: string;
   paymentMethod: string;
 }
 
@@ -59,7 +69,16 @@ const schema = yup.object({
   amount: yup
     .number()
     .required("Vui lòng nhập số tiền quyên góp")
-    .min(10000, "Số tiền tối thiểu là 10,000 VNĐ"),
+    .min(10000, "Số tiền tối thiểu là 10,000 VNĐ")
+    .test(
+      "max",
+      "Số tiền vượt quá số còn thiếu",
+      function (value) {
+        const { assistance } = this.parent;
+        if (!assistance || !value) return true;
+        return value <= assistance.requestedAmount - assistance.raisedAmount;
+      }
+    ),
 
   donorName: yup.string().when("$isAnonymous", {
     is: false,
@@ -87,13 +106,15 @@ const schema = yup.object({
 export default function DonationForm({
   open,
   onOpenChange,
-  campaign,
+  assistanceId,
 }: DonationFormProps) {
   const { t } = useTranslation();
   const { user } = useAuthStore();
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
+  const [assistance, setAssistance] = useState<PatientAssistance | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const {
     register,
@@ -104,12 +125,33 @@ export default function DonationForm({
     reset,
   } = useForm<FormData>({
     resolver: yupResolver(schema),
-    context: { isAnonymous },
+    context: { isAnonymous, assistance },
   });
 
   const watchedAmount = watch("amount");
 
-  // Tự động điền thông tin người dùng khi form mở và không chọn ẩn danh
+  // === LẤY THÔNG TIN YÊU CẦU HỖ TRỢ ===
+  useEffect(() => {
+    if (open && assistanceId) {
+      const fetchAssistance = async () => {
+        setLoading(true);
+        try {
+          const res = await assistanceAPI.getById(assistanceId);
+          setAssistance(res.data.data);
+        } catch (error: any) {
+          toast.error(error.response?.data?.message || "Không thể tải thông tin yêu cầu");
+          onOpenChange(false);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchAssistance();
+    } else {
+      setAssistance(null);
+    }
+  }, [open, assistanceId, onOpenChange]);
+
+  // === TỰ ĐỘNG ĐIỀN THÔNG TIN ===
   useEffect(() => {
     if (open && user && !isAnonymous) {
       setValue("donorName", user.fullName || "");
@@ -118,7 +160,6 @@ export default function DonationForm({
     }
   }, [open, user, isAnonymous, setValue]);
 
-  // Xóa thông tin khi chọn ẩn danh
   useEffect(() => {
     if (isAnonymous) {
       setValue("donorName", "");
@@ -129,65 +170,105 @@ export default function DonationForm({
 
   useEffect(() => {
     if (!open) {
-      reset(); 
+      reset();
       setIsAnonymous(false);
       setSelectedAmount(null);
+      setAssistance(null);
     }
   }, [open, reset]);
 
-  const quickAmounts = [50000, 100000, 200000, 500000, 1000000, 2000000];
+  const quickAmounts = [50000, 100000, 200000, 500000, 1000000];
 
-  const paymentMethods = [{ value: "vnpay", label: "VNPay", icon: "💳" }];
+  const paymentMethods = [{ value: "vnpay", label: "VNPay", icon: "Card" }];
 
   const handleQuickAmount = (amount: number) => {
     setSelectedAmount(amount);
     setValue("amount", amount);
   };
 
-  const onSubmit = async (data: any) => {
-    const { vnp_TmnCode, vnp_HashSecret, vnp_Url, BASE_URL } = ENV;
-    const returnUrl = `${BASE_URL}/xac-nhan-thanh-toan`;
-    if (!vnp_HashSecret || !vnp_Url || !vnp_TmnCode || !returnUrl) {
-      alert("Không thể thực hiện thanh toán, thiếu thông tin cấu hình.");
-      return;
+  const onSubmit = async (data: FormData) => {
+    if (!assistance) return;
+
+    setIsSubmitting(true);
+    try {
+      // === TẠO DONATION TRƯỚC ===
+      const donationRes = await donationsAPI.create({
+        assistanceId: assistance._id,
+        amount: data.amount,
+        donorName: isAnonymous ? null : data.donorName,
+        donorEmail: isAnonymous ? null : data.donorEmail,
+        donorPhone: isAnonymous ? null : data.donorPhone,
+        message: data.message || null,
+        isAnonymous,
+        paymentMethod: data.paymentMethod,
+      });
+
+      if (data.paymentMethod === "vnpay") {
+        const { vnp_TmnCode, vnp_HashSecret, vnp_Url, BASE_URL } = ENV;
+        const returnUrl = `${BASE_URL}/donation-result?donationId=${donationRes.data.data._id}`;
+        if (!vnp_HashSecret || !vnp_Url || !vnp_TmnCode) {
+          toast.error("Cấu hình VNPay chưa đầy đủ");
+          return;
+        }
+
+        const createDate = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, "");
+        const orderId = `DON${Date.now()}`;
+
+        const paymentData: any = {
+          vnp_Amount: data.amount * 100,
+          vnp_Command: "pay",
+          vnp_CreateDate: createDate,
+          vnp_CurrCode: "VND",
+          vnp_IpAddr: "127.0.0.1",
+          vnp_Locale: "vn",
+          vnp_OrderInfo: `Quyen gop cho ${assistance.title}`,
+          vnp_OrderType: "250001",
+          vnp_ReturnUrl: returnUrl,
+          vnp_TxnRef: orderId,
+          vnp_Version: "2.1.0",
+          vnp_TmnCode,
+        };
+
+        const sortedParams = sortObject(paymentData)
+          .map((key) => `${key}=${encodeURIComponent(paymentData[key])}`)
+          .join("&");
+
+        const vnp_SecureHash = calculateVnpSecureHash(sortedParams, vnp_HashSecret);
+        const paymentUrl = `${vnp_Url}?${sortedParams}&vnp_SecureHash=${vnp_SecureHash}`;
+
+        window.location.href = paymentUrl;
+      } else {
+        toast.success("Quyên góp thành công!");
+        onOpenChange(false);
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Lỗi khi quyên góp");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    const createDate = new Date()
-      .toISOString()
-      .slice(0, 19)
-      .replace(/[-:T]/g, "");
-    const orderId =
-      new Date().getHours().toString().padStart(2, "0") +
-      new Date().getMinutes().toString().padStart(2, "0") +
-      Math.floor(Math.random() * 10000);
-
-    const paymentData: any = {
-      vnp_Amount: watchedAmount * 100,
-      vnp_Command: "pay",
-      vnp_CreateDate: createDate,
-      vnp_CurrCode: "VND",
-      vnp_IpAddr: "127.0.0.1",
-      vnp_Locale: "vn",
-      vnp_OrderInfo: "p",
-      vnp_OrderType: "250000",
-      vnp_ReturnUrl: returnUrl,
-      vnp_TxnRef: orderId,
-      vnp_Version: "2.1.0",
-      vnp_TmnCode: vnp_TmnCode,
-    };
-
-    const sortedParams = sortObject(paymentData)
-      .map((key) => `${key}=${encodeURIComponent(paymentData[key])}`)
-      .join("&");
-
-    const vnp_SecureHash = calculateVnpSecureHash(sortedParams, vnp_HashSecret);
-    const paymentUrl = `${vnp_Url}?${sortedParams}&vnp_SecureHash=${vnp_SecureHash}`;
-    alert(`Thanh toán qua VNPay với số tiền: ${watchedAmount} VND`);
-    console.log({ paymentUrl });
-    window.location.href = paymentUrl;
   };
 
-  const progress = campaign ? (campaign.raised / campaign.target) * 100 : 0;
+  const progress = assistance
+    ? (assistance.raisedAmount / assistance.requestedAmount) * 100
+    : 0;
+
+  const remaining = assistance
+    ? assistance.requestedAmount - assistance.raisedAmount
+    : 0;
+
+  if (loading) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent>
+          <div className="text-center py-8">Đang tải thông tin...</div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  if (!assistance) {
+    return null;
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -195,32 +276,36 @@ export default function DonationForm({
         <DialogHeader>
           <DialogTitle className="healthcare-heading flex items-center">
             <Heart className="mr-2 h-6 w-6 text-red-500" />
-            Quyên góp từ thiện
+            Hỗ trợ bệnh nhân
           </DialogTitle>
           <DialogDescription>
-            Mỗi đóng góp của bạn đều mang lại hy vọng cho những người cần giúp đỡ
+            Đóng góp của bạn giúp {assistance.patientId.userId.fullName} vượt qua khó khăn
           </DialogDescription>
         </DialogHeader>
 
-        {campaign && (
-          <div className="bg-muted/50 p-4 rounded-lg space-y-3">
-            <h3 className="font-semibold healthcare-heading">{campaign.title}</h3>
-            <p className="text-muted-foreground text-sm">{campaign.description}</p>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Đã quyên góp:</span>
-                <span className="font-medium">
-                  {campaign.raised.toLocaleString("vi-VN")} /{" "}
-                  {campaign.target.toLocaleString("vi-VN")} VNĐ
-                </span>
-              </div>
-              <Progress value={progress} className="h-2" />
-              <p className="text-xs text-muted-foreground">
-                {progress.toFixed(1)}% hoàn thành mục tiêu
-              </p>
+        {/* THÔNG TIN YÊU CẦU HỖ TRỢ */}
+        <div className="bg-muted/50 p-4 rounded-lg space-y-3">
+          <h3 className="font-semibold healthcare-heading">{assistance.title}</h3>
+          <p className="text-sm text-muted-foreground">
+            <strong>Bệnh:</strong> {assistance.medicalCondition} •{" "}
+            <strong>Độ khẩn:</strong> {assistance.urgency}
+          </p>
+          <p className="text-sm">{assistance.description}</p>
+
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>Đã quyên góp:</span>
+              <span className="font-medium">
+                {assistance.raisedAmount.toLocaleString("vi-VN")} /{" "}
+                {assistance.requestedAmount.toLocaleString("vi-VN")} VNĐ
+              </span>
             </div>
+            <Progress value={progress} className="h-2" />
+            <p className="text-xs text-muted-foreground">
+              {progress.toFixed(1)}% • Còn thiếu: {remaining.toLocaleString("vi-VN")} VNĐ
+            </p>
           </div>
-        )}
+        </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Số tiền */}
@@ -240,6 +325,7 @@ export default function DonationForm({
                   variant={selectedAmount === amount ? "default" : "outline"}
                   className="text-sm"
                   onClick={() => handleQuickAmount(amount)}
+                  disabled={amount > remaining}
                 >
                   {amount.toLocaleString("vi-VN")} VNĐ
                 </Button>
@@ -251,7 +337,7 @@ export default function DonationForm({
               <Input
                 id="amount"
                 type="number"
-                placeholder="Nhập số tiền bạn muốn quyên góp"
+                placeholder={`Tối đa ${remaining.toLocaleString("vi-VN")}`}
                 {...register("amount")}
                 onChange={(e) => {
                   setSelectedAmount(null);
@@ -344,7 +430,7 @@ export default function DonationForm({
             <Label htmlFor="message">Lời nhắn (tùy chọn)</Label>
             <Textarea
               id="message"
-              placeholder="Để lại lời động viên..."
+              placeholder="Chúc bệnh nhân mau khỏe..."
               rows={3}
               {...register("message")}
             />
@@ -355,7 +441,7 @@ export default function DonationForm({
             <Label>Phương thức thanh toán *</Label>
             <Select onValueChange={(value) => setValue("paymentMethod", value)}>
               <SelectTrigger>
-                <SelectValue placeholder="Chọn phương thức thanh toán" />
+                <SelectValue placeholder="Chọn phương thức" />
               </SelectTrigger>
               <SelectContent>
                 {paymentMethods.map((method) => (
@@ -373,26 +459,26 @@ export default function DonationForm({
             )}
           </div>
 
-          {/* Chỉ hiển thị cho VNPAY */}
+          {/* VNPAY */}
           {watch("paymentMethod") === "vnpay" && (
             <div className="bg-purple-50 dark:bg-purple-900 p-4 rounded-lg space-y-3 mt-3">
               <h4 className="font-semibold text-purple-800 dark:text-purple-200">
-                Thanh toán điện tử VNPay
+                Thanh toán qua VNPay
               </h4>
-              <p>
-                Bạn sẽ được chuyển đến cổng thanh toán VNPay để hoàn tất giao dịch.
+              <p className="text-sm">
+                Bạn sẽ được chuyển đến cổng thanh toán an toàn.
               </p>
               <Button
                 type="submit"
                 className="w-full bg-purple-600 hover:bg-purple-700 text-white"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? "Đang xử lý..." : "Thanh toán qua VNPay"}
+                {isSubmitting ? "Đang xử lý..." : "Thanh toán ngay"}
               </Button>
             </div>
           )}
 
-          {/* Thông tin minh bạch */}
+          {/* Cam kết minh bạch */}
           <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
             <div className="flex items-start space-x-2">
               <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
@@ -401,9 +487,9 @@ export default function DonationForm({
                   Cam kết minh bạch
                 </h4>
                 <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-                  <li>• 100% số tiền được chuyển đến người cần hỗ trợ</li>
-                  <li>• Bảo mật thông tin cá nhân tuyệt đối</li>
-                  <li>• Có thể xuất hóa đơn từ thiện để giảm trừ thuế</li>
+                  <li>• 100% số tiền đến tay bệnh nhân</li>
+                  <li>• Bảo mật thông tin tuyệt đối</li>
+                  <li>• Có hóa đơn từ thiện hợp pháp</li>
                 </ul>
               </div>
             </div>

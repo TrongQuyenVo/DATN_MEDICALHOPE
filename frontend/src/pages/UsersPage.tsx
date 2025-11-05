@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, MoreHorizontal, Shield, ShieldCheck, ShieldX, Edit, Trash2, Plus } from 'lucide-react';

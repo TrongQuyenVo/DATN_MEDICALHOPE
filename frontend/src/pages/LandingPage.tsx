@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { motion } from 'framer-motion';
 import {
   ArrowRight, Heart, Users, Stethoscope, Calendar,
@@ -89,6 +90,7 @@ export default function LandingPage() {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [testimonialLoading, setTestimonialLoading] = useState(true);
   const [testimonialError, setTestimonialError] = useState<string | null>(null);
+  const [selectedAssistanceId, setSelectedAssistanceId] = useState<string | null>(null);
   const [testimonialFormData, setTestimonialFormData] = useState({
     name: '',
     age: '',
@@ -849,8 +851,14 @@ export default function LandingPage() {
                         <div>
                           <h3 className="font-bold text-lg">{request.patientId.userId.fullName}</h3>
                           <div className="text-sm text-muted-foreground">
-                            <p>Tuổi: {calculateAge(request.patientId.userId.profile.dateOfBirth)}</p>
-                            <p>Địa chỉ: {request.patientId.userId.profile.address}</p>
+                            <p>
+                              Tuổi: {request.patientId?.userId?.profile?.dateOfBirth
+                                ? calculateAge(request.patientId.userId.profile.dateOfBirth)
+                                : 'N/A'}
+                            </p>
+                            <p>
+                              Địa chỉ: {request.patientId?.userId?.profile?.address || 'Chưa cung cấp'}
+                            </p>
                           </div>
                         </div>
                         <Badge variant="secondary">
@@ -878,7 +886,7 @@ export default function LandingPage() {
                       </div>
                       <Button
                         className="bg-red-500 text-white hover:bg-red-600 w-full"
-                        onClick={() => setOpenForm(true)}
+                        onClick={() => setSelectedAssistanceId(request._id)}
                       >
                         Ủng hộ ngay
                       </Button>
@@ -1177,8 +1185,9 @@ export default function LandingPage() {
       <ChatBubble />
       <ScrollToTop />
       <DonationForm
-        open={openForm}
-        onOpenChange={setOpenForm}
+        open={!!selectedAssistanceId}
+        onOpenChange={(open) => !open && setSelectedAssistanceId(null)}
+        assistanceId={selectedAssistanceId || undefined}
       />
     </div>
   );

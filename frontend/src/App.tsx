@@ -39,6 +39,7 @@ import ExtendedBusPartnerList from "./pages/ExtendedBusPartnerList";
 import ExtendedFoodDistributionList from "./pages/ExtendedFoodDistributionList";
 import { PartnerManagement } from "./pages/PartnerManagement";
 import AdminTestimonials from "./pages/AdminTestimonials";
+import AssistanceDetailPage from "./pages/AssistanceDetailPage";
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -259,6 +260,7 @@ const App = () => {
                   </ProtectedRoute>
                 }
               />
+              <Route path="/assistance/:id" element={<AssistanceDetailPage />} />
 
               {/* Catch-all route */}
               <Route path="*" element={<NotFound />} />

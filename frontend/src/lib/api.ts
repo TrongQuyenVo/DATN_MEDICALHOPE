@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from 'axios';
 import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
@@ -97,6 +98,7 @@ export const doctorsAPI = {
 // ==========================
 export const patientsAPI = {
   getAll: (params?: any) => api.get('/patients', { params }),
+  create: (data: any) => api.post('/patients', data),
   getProfile: () => api.get('/patients/profile'),
   updateProfile: (data: any) => api.put('/patients/profile', data),
   verify: (id: string) => api.patch(`/patients/${id}/verify`),
@@ -137,6 +139,8 @@ export const donationsAPI = {
 // 🤝 ASSISTANCE API
 // ==========================
 export const assistanceAPI = {
+  getById: (id: string) => api.get(`/assistance/${id}`),
+
   create: (data: FormData) =>
     api.post('/assistance', data, {
       headers: { 'Content-Type': 'multipart/form-data' },

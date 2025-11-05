@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Heart, CheckCircle, Clock, UserPlus } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Heart, CheckCircle, Clock, UserPlus, UserCheck } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -19,17 +20,63 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ScrollToTop from '@/components/layout/ScrollToTop';
 import ChatBubble from './ChatbotPage';
+import PatientProfileModal from './PatientProfileModal';
 
 interface Patient {
   id: string;
   name: string;
   age: number;
   condition: string;
+  isSelfReported: boolean;
   economicStatus: string;
   isVerified: boolean;
   registeredAt: string;
   lastVisit: string;
+  userId: {
+    _id: string;
+    fullName: string;
+    email: string;
+    phone: string;
+    avatar?: string;
+    profile?: {
+      dateOfBirth?: string | Date;
+      condition?: string;
+    };
+  };
 }
+
+const API_SERVER = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/api\/?$/, '');
+const getAvatarUrl = (avatarPath: string | null | undefined): string | null => {
+  if (!avatarPath) return null;
+  if (avatarPath.startsWith('http')) return avatarPath;
+  const prefix = API_SERVER.endsWith('/') ? API_SERVER.slice(0, -1) : API_SERVER;
+  return `${prefix}${avatarPath.startsWith('/') ? '' : '/'}${avatarPath}`;
+};
+
+const getInitials = (name: string) => {
+  return name
+    .trim()
+    .split(' ')
+    .filter(Boolean)
+    .map(word => word[0].toUpperCase())
+    .slice(0, 2)
+    .join('');
+};
+
+// Tính tuổi chính xác
+const calculateAge = (dateOfBirth?: string | Date): number => {
+  if (!dateOfBirth) return 0;
+  const birthDate = new Date(dateOfBirth);
+  if (isNaN(birthDate.getTime())) return 0;
+
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  const dayDiff = today.getDate() - birthDate.getDate();
+
+  if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) age--;
+  return age;
+};
 
 export default function PatientsPage() {
   const { user } = useAuthStore();
@@ -39,33 +86,53 @@ export default function PatientsPage() {
   const [limit, setLimit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [openDialog, setOpenDialog] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [newPatient, setNewPatient] = useState({
     fullName: '',
     email: '',
     phone: '',
     password: '',
-    age: '',
+    dateOfBirth: '',
     condition: '',
     economicStatus: '',
   });
-
-  if (!user) return null;
 
   const fetchPatients = async () => {
     try {
       setLoading(true);
       const response = await patientsAPI.getAll({ page, limit });
       const patientsData = Array.isArray(response.data.patients) ? response.data.patients : [];
-      const mappedPatients: Patient[] = patientsData.map((patient: any) => ({
-        id: patient._id,
-        name: patient.userId?.fullName || 'Không xác định',
-        age: patient.userId?.profile?.age || 0,
-        condition: patient.medicalHistory?.[0]?.condition || 'Không xác định',
-        economicStatus: patient.economicStatus || 'Không xác định',
-        isVerified: patient.isVerified || false,
-        registeredAt: patient.createdAt || new Date().toISOString(),
-        lastVisit: patient.medicalHistory?.[0]?.diagnosedDate || 'Chưa có',
-      }));
+
+      const mappedPatients: Patient[] = patientsData.map((patient: any) => {
+        const dob = patient.userId?.profile?.dateOfBirth;
+        const age = calculateAge(dob);
+
+        const profileCondition = patient.userId?.profile?.condition;
+        const medicalCondition = patient.medicalHistory?.[0]?.condition;
+        const finalCondition = profileCondition || medicalCondition || 'Chưa cập nhật';
+        const isSelfReported = !!profileCondition && profileCondition !== medicalCondition;
+
+        return {
+          id: patient._id,
+          name: patient.userId?.fullName || 'Không xác định',
+          age,
+          condition: finalCondition,
+          isSelfReported,
+          economicStatus: patient.economicStatus || 'Không xác định',
+          isVerified: patient.isVerified || false,
+          registeredAt: patient.createdAt || new Date().toISOString(),
+          lastVisit: patient.medicalHistory?.[0]?.diagnosedDate || 'Chưa có',
+          userId: {
+            _id: patient.userId?._id || '',
+            fullName: patient.userId?.fullName || 'Không xác định',
+            email: patient.userId?.email || '',
+            phone: patient.userId?.phone || '',
+            avatar: patient.userId?.avatar,
+            profile: patient.userId?.profile || {},
+          },
+        };
+      });
+
       setPatients(mappedPatients);
       setTotalPages(response.data.pagination?.pages || 1);
     } catch (error) {
@@ -78,27 +145,46 @@ export default function PatientsPage() {
   };
 
   useEffect(() => {
-    fetchPatients();
-  }, [page, limit]);
+    if (user) fetchPatients();
+  }, [user, page, limit]);
+
+  if (!user) return null;
 
   const handleCreatePatient = async () => {
     try {
+      const [day, month, year] = newPatient.dateOfBirth.split('/').map(Number);
+      if (!day || !month || !year || day > 31 || month > 12 || year < 1900) {
+        toast.error('Ngày sinh không hợp lệ (dd/mm/yyyy)');
+        return;
+      }
+
+      const dateOfBirth = new Date(year, month - 1, day);
+      if (isNaN(dateOfBirth.getTime())) {
+        toast.error('Ngày sinh không hợp lệ');
+        return;
+      }
+
       await patientsAPI.create({
         fullName: newPatient.fullName,
         email: newPatient.email,
         phone: newPatient.phone,
         password: newPatient.password,
-        age: parseInt(newPatient.age) || 0,
-        condition: newPatient.condition,
+        profile: { dateOfBirth: dateOfBirth.toISOString() },
+        medicalHistory: [
+          { condition: newPatient.condition || 'Chưa xác định', diagnosedDate: new Date() },
+        ],
         economicStatus: newPatient.economicStatus,
       });
+
       toast.success('Tạo bệnh nhân thành công');
       setOpenDialog(false);
-      setNewPatient({ fullName: '', email: '', phone: '', password: '', age: '', condition: '', economicStatus: '' });
+      setNewPatient({
+        fullName: '', email: '', phone: '', password: '',
+        dateOfBirth: '', condition: '', economicStatus: '',
+      });
       fetchPatients();
-    } catch (error) {
-      console.error('Error creating patient:', error);
-      toast.error('Không thể tạo bệnh nhân. Vui lòng thử lại.');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Không thể tạo bệnh nhân');
     }
   };
 
@@ -108,45 +194,34 @@ export default function PatientsPage() {
       toast.success('Xác thực bệnh nhân thành công');
       fetchPatients();
     } catch (error) {
-      console.error('Error verifying patient:', error);
-      toast.error('Không thể xác thực bệnh nhân. Vui lòng thử lại.');
+      toast.error('Không thể xác thực bệnh nhân');
     }
   };
 
   const getPageTitle = () => {
     switch (user.role) {
-      case 'doctor':
-        return 'Danh sách bệnh nhân';
-      case 'admin':
-        return 'Quản lý bệnh nhân';
-      case 'charity_admin':
-        return 'Bệnh nhân cần hỗ trợ';
-      default:
-        return 'Bệnh nhân';
+      case 'doctor': return 'Danh sách bệnh nhân';
+      case 'admin': return 'Quản lý bệnh nhân';
+      case 'charity_admin': return 'Bệnh nhân cần hỗ trợ';
+      default: return 'Bệnh nhân';
     }
   };
 
   const getPageSubtitle = () => {
     switch (user.role) {
-      case 'doctor':
-        return 'Các bệnh nhân đã khám và theo dõi';
-      case 'admin':
-        return 'Quản lý thông tin và xác thực bệnh nhân';
-      case 'charity_admin':
-        return 'Danh sách bệnh nhân có hoàn cảnh khó khăn cần hỗ trợ';
-      default:
-        return 'Danh sách bệnh nhân';
+      case 'doctor': return 'Các bệnh nhân đã khám và theo dõi';
+      case 'admin': return 'Quản lý thông tin và xác thực bệnh nhân';
+      case 'charity_admin': return 'Danh sách bệnh nhân có hoàn cảnh khó khăn cần hỗ trợ';
+      default: return 'Danh sách bệnh nhân';
     }
   };
 
   const getVisiblePatients = () => {
     switch (user.role) {
       case 'doctor':
-        return patients.filter(patient => patient.condition !== 'Khỏe mạnh');
+        return patients.filter(p => p.condition !== 'Khỏe mạnh');
       case 'charity_admin':
-        return patients.filter(
-          patient => patient.economicStatus === 'very_poor' || patient.economicStatus === 'poor'
-        );
+        return patients.filter(p => ['very_poor', 'poor'].includes(p.economicStatus));
       case 'admin':
         return patients;
       default:
@@ -224,10 +299,15 @@ export default function PatientsPage() {
                   onChange={(e) => setNewPatient({ ...newPatient, password: e.target.value })}
                 />
                 <Input
-                  placeholder="Tuổi"
-                  type="number"
-                  value={newPatient.age}
-                  onChange={(e) => setNewPatient({ ...newPatient, age: e.target.value })}
+                  placeholder="Ngày sinh (dd/mm/yyyy)"
+                  value={newPatient.dateOfBirth}
+                  onChange={(e) => {
+                    let value = e.target.value.replace(/\D/g, '');
+                    if (value.length > 2) value = value.slice(0, 2) + '/' + value.slice(2);
+                    if (value.length > 5) value = value.slice(0, 5) + '/' + value.slice(5, 9);
+                    setNewPatient({ ...newPatient, dateOfBirth: value });
+                  }}
+                  maxLength={10}
                 />
                 <Input
                   placeholder="Tình trạng bệnh"
@@ -248,7 +328,7 @@ export default function PatientsPage() {
                     <SelectItem value="good">Tốt</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button onClick={handleCreatePatient} className="btn-healthcare">
+                <Button onClick={handleCreatePatient} className="btn-healthcare w-full">
                   Tạo bệnh nhân
                 </Button>
               </div>
@@ -275,9 +355,23 @@ export default function PatientsPage() {
                   <CardContent className="p-6">
                     <div className="flex items-start space-x-4">
                       <Avatar className="w-16 h-16">
-                        <AvatarImage src={patient.userId?.avatar} />
+                        {(() => {
+                          const avatarUrl = getAvatarUrl(patient.userId.avatar);
+                          if (avatarUrl) {
+                            return (
+                              <AvatarImage
+                                src={avatarUrl}
+                                alt={patient.name}
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            );
+                          }
+                          return null;
+                        })()}
                         <AvatarFallback className="text-lg bg-gradient-primary text-white">
-                          {patient.name.charAt(0)}
+                          {getInitials(patient.name)}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
@@ -292,7 +386,9 @@ export default function PatientsPage() {
                               )}
                             </h3>
                             <p className="text-muted-foreground">
-                              {patient.age} tuổi • {patient.condition}
+                              {patient.age > 0 && `${patient.age} tuổi`}
+                              {patient.age > 0 && patient.condition !== 'Chưa cập nhật' && ' • '}
+                              {patient.condition}
                             </p>
                           </div>
                         </div>
@@ -307,17 +403,20 @@ export default function PatientsPage() {
                           <div>
                             <span className="text-muted-foreground">Khám gần nhất: </span>
                             <span className="font-medium">
-                              {patient.lastVisit !== 'Chưa có' ? new Date(patient.lastVisit).toLocaleDateString('vi-VN') : 'Chưa có'}
+                              {patient.lastVisit !== 'Chưa có'
+                                ? new Date(patient.lastVisit).toLocaleDateString('vi-VN')
+                                : 'Chưa có'}
                             </span>
                           </div>
                         </div>
 
                         <div className="flex items-center justify-between">
                           <Badge className={getStatusColor(patient.economicStatus)}>
-                            {patient.economicStatus === 'very_poor' ? 'Rất nghèo' :
-                              patient.economicStatus === 'poor' ? 'Nghèo' :
-                                patient.economicStatus === 'middle' ? 'Trung bình' :
-                                  patient.economicStatus === 'good' ? 'Tốt' : patient.economicStatus}
+                            {patient.economicStatus === 'very_poor' ? 'Rất nghèo'
+                              : patient.economicStatus === 'poor' ? 'Nghèo'
+                                : patient.economicStatus === 'middle' ? 'Trung bình'
+                                  : patient.economicStatus === 'good' ? 'Tốt'
+                                    : 'Không xác định'}
                           </Badge>
 
                           {user.role === 'admin' && !patient.isVerified && (
@@ -331,11 +430,7 @@ export default function PatientsPage() {
                           )}
 
                           {user.role === 'charity_admin' && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-xs"
-                            >
+                            <Button size="sm" variant="outline" className="text-xs">
                               Hỗ trợ
                             </Button>
                           )}
@@ -345,6 +440,7 @@ export default function PatientsPage() {
                               size="sm"
                               variant="outline"
                               className="text-xs"
+                              onClick={() => setSelectedPatient(patient)}
                             >
                               Xem hồ sơ
                             </Button>
@@ -384,6 +480,13 @@ export default function PatientsPage() {
             Trang sau
           </Button>
         </div>
+      )}
+      {selectedPatient && (
+        <PatientProfileModal
+          patient={selectedPatient}
+          open={!!selectedPatient}
+          onOpenChange={(open) => !open && setSelectedPatient(null)}
+        />
       )}
       <ScrollToTop />
       <ChatBubble />

@@ -38,7 +38,13 @@ exports.createAssistanceRequest = async (req, res) => {
     }
 
     // 👤 POPULATE DATA
-    await assistance.populate("patientId", "userId fullName");
+    await assistance.populate({
+      path: "patientId",
+      populate: {
+        path: "userId",
+        select: "fullName phone profile.dateOfBirth profile.address",
+      },
+    });
 
     res.status(201).json({
       success: true,
@@ -81,7 +87,13 @@ exports.getAssistances = async (req, res) => {
     }
 
     const assistances = await PatientAssistance.find(query)
-      .populate("patientId", "userId fullName phone")
+      .populate({
+        path: "patientId",
+        populate: {
+          path: "userId",
+          select: "fullName phone profile.dateOfBirth profile.address",
+        },
+      })
       .populate("approvedBy", "fullName email")
       .sort({ createdAt: -1 })
       .limit(limit * 1)
@@ -127,10 +139,45 @@ exports.getPublicAssistances = async (req, res) => {
       count: assistances.length,
     });
   } catch (error) {
-    console.error("❌ Get public assistances error:", error);
+    console.error("❌ Lỗi khi lấy danh sách yêu cầu hỗ trợ công khai:", error); // Log chi tiết lỗi
     res.status(500).json({
       success: false,
       message: "Lỗi server: " + error.message,
+    });
+  }
+};
+
+// 🆕 LẤY CHI TIẾT YÊU CẦU HỖ TRỢ THEO ID
+exports.getAssistanceById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const assistance = await PatientAssistance.findById(id)
+      .populate({
+        path: "patientId",
+        populate: {
+          path: "userId",
+          select: "fullName phone profile.dateOfBirth profile.address",
+        },
+      })
+      .populate("approvedBy", "fullName");
+
+    if (!assistance) {
+      return res.status(404).json({
+        success: false,
+        message: "Yêu cầu hỗ trợ không tồn tại",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: assistance,
+    });
+  } catch (error) {
+    console.error("Get assistance by ID error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server",
     });
   }
 };
@@ -147,7 +194,13 @@ exports.updateAssistanceStatus = async (req, res) => {
         updatedAt: new Date(),
       },
       { new: true }
-    ).populate("patientId", "userId fullName");
+    ).populate({
+      path: "patientId",
+      populate: {
+        path: "userId",
+        select: "fullName phone profile.dateOfBirth profile.address",
+      },
+    });
 
     if (!assistance) {
       return res.status(404).json({
