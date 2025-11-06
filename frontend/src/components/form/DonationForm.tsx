@@ -219,27 +219,6 @@ export default function DonationForm({
 
       if (data.paymentMethod === "vnpay") {
         const { vnp_TmnCode, vnp_HashSecret, vnp_Url, BASE_URL } = ENV;
-<<<<<<< HEAD
-
-        console.log("BƯỚC 4: Kiểm tra cấu hình VNPay", {
-          vnp_TmnCode: vnp_TmnCode ? "OK" : "MISSING",
-          vnp_HashSecret: vnp_HashSecret ? "OK" : "MISSING",
-          vnp_Url: vnp_Url || "MISSING",
-          BASE_URL,
-        });
-
-        if (!vnp_HashSecret || !vnp_Url || !vnp_TmnCode) {
-          console.error("Cấu hình VNPay thiếu");
-          toast.error("Cấu hình VNPay chưa đầy đủ");
-          return;
-        }
-
-        const donationId = donationRes.data.donation._id;
-        const returnUrl = `${BASE_URL}/donation-result?donationId=${donationId}`;
-
-        const createDate = new Date().toISOString().slice(0, 19).replace(/[-T:]/g, "");
-        const orderId = `DON${Date.now()}${Math.floor(Math.random() * 1000)}`;
-=======
         const donationId = donationRes.data.donation._id;
         setPaymentInfo({
           donationId,
@@ -261,7 +240,6 @@ export default function DonationForm({
           new Date().getHours().toString().padStart(2, "0") +
           new Date().getMinutes().toString().padStart(2, "0") +
           Math.floor(Math.random() * 10000);
->>>>>>> df4ccd2eabaa9318f07f7e15ffb59435aab12338
 
         const paymentData: any = {
           vnp_Amount: data.amount * 100,
@@ -286,42 +264,6 @@ export default function DonationForm({
           .map((key) => `${key}=${encodeURIComponent(paymentData[key])}`)
           .join("&");
 
-<<<<<<< HEAD
-        console.log("BƯỚC 6: Params đã sort & encode", sortedParams);
-
-        const vnp_SecureHash = calculateVnpSecureHash(sortedParams, vnp_HashSecret);
-        console.log("BƯỚC 7: SecureHash", vnp_SecureHash);
-
-        const finalUrl = `${vnp_Url}?${sortedParams}&vnp_SecureHash=${vnp_SecureHash}`;
-        console.log("BƯỚC 8: URL thanh toán đầy đủ", finalUrl);
-
-        // TẠO FORM ĐỘNG
-        const form = document.createElement("form");
-        form.method = "POST";
-        form.action = vnp_Url;
-        form.target = "_blank";
-
-        const params = new URLSearchParams(sortedParams);
-        params.append("vnp_SecureHash", vnp_SecureHash);
-
-        console.log("BƯỚC 9: Các input trong form", Object.fromEntries(params));
-
-        for (const [key, value] of params.entries()) {
-          const input = document.createElement("input");
-          input.type = "hidden";
-          input.name = key;
-          input.value = value;
-          form.appendChild(input);
-        }
-
-        document.body.appendChild(form);
-        console.log("BƯỚC 10: Form đã thêm vào DOM và submit...");
-        form.submit();
-        document.body.removeChild(form);
-
-        toast.success("Đang chuyển đến cổng thanh toán...");
-        onOpenChange(false);
-=======
         const vnp_SecureHash = calculateVnpSecureHash(
           sortedParams,
           vnp_HashSecret
@@ -407,7 +349,6 @@ export default function DonationForm({
 
         // toast.success("Đang chuyển đến cổng thanh toán...");
         // onOpenChange(false);
->>>>>>> df4ccd2eabaa9318f07f7e15ffb59435aab12338
       } else {
         toast.success("Quyên góp thành công!");
         onOpenChange(false);

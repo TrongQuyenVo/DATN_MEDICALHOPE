@@ -26,6 +26,7 @@ import { usersAPI } from '@/lib/api';
 import toast from 'react-hot-toast';
 import ScrollToTop from '@/components/layout/ScrollToTop';
 import ChatBubble from './ChatbotPage';
+import { useAuthStore } from "@/stores/authStore";
 
 interface User {
   id: string;
@@ -54,6 +55,9 @@ export default function UsersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user, updateUser } = useAuthStore();
+
+  const isAdmin = user?.role === 'admin' || user?.role === 'charity_admin';
 
   // Helper: chuyển "/uploads/..." thành URL đầy đủ (giống ProfilePage / Header)
   const API_SERVER = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/api\/?$/, '');
@@ -353,7 +357,7 @@ export default function UsersPage() {
         </div>
       )}
       <ScrollToTop />
-      <ChatBubble />
+      {!isAdmin && <ChatBubble />}
     </motion.div>
   );
 }

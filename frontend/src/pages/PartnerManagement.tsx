@@ -49,6 +49,7 @@ interface Pagination {
 
 export function PartnerManagement() {
   const { user } = useAuthStore();
+  const isAdmin = user?.role === 'admin' || user?.role === 'charity_admin';
   const [partners, setPartners] = useState<Partner[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     total: 0,
@@ -731,7 +732,7 @@ export function PartnerManagement() {
       </div>
 
       <ScrollToTop />
-      <ChatBubble />
+      {!isAdmin && <ChatBubble />}
     </motion.div>
   );
 }

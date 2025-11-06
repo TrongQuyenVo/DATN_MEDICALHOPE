@@ -17,6 +17,7 @@ export default function AppointmentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
+  const isAdmin = user?.role === 'admin' || user?.role === 'charity_admin';
 
 
   const fetchAppointments = async () => {
@@ -334,7 +335,7 @@ export default function AppointmentsPage() {
           onSuccess={fetchAppointments}
         />
       )}
-      <ChatBubble />
+      {!isAdmin && <ChatBubble />}
     </motion.div>
   );
 }

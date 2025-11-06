@@ -1,12 +1,10 @@
 import { useState } from "react";
-import { Heart, Phone, Mail, MapPin } from "lucide-react";
+import { Heart, Phone, Mail, MapPin, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import DonationForm from '@/components/form/DonationForm';
 
 export default function Footer() {
   const navigate = useNavigate();
-  const [openForm, setOpenForm] = useState(false);
 
   return (
     <footer className="pt-10 pb-5 bg-background border-t">
@@ -32,7 +30,6 @@ export default function Footer() {
               <li><Button variant="link" className="p-0" onClick={() => navigate('/services')}>Dịch vụ</Button></li>
               <li><Button variant="link" className="p-0" onClick={() => navigate('/programs')}>Chương trình</Button></li>
               <li><Button variant="link" className="p-0" onClick={() => navigate('/organizations')}>Tổ chức</Button></li>
-
             </ul>
           </div>
 
@@ -55,17 +52,18 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Donation */}
+          {/* Volunteer Registration */}
           <div>
-            <h3 className="font-bold text-lg mb-4">Ủng hộ & Quyên góp</h3>
+            <h3 className="font-bold text-lg mb-4">Đăng ký tình nguyện</h3>
             <p className="text-sm text-muted-foreground mb-3">
-              Mỗi đóng góp của bạn đều mang lại hy vọng cho bệnh nhân khó khăn.
+              Tham gia cùng chúng tôi để mang lại hy vọng và sức khỏe cho cộng đồng.
             </p>
             <Button
-              className="bg-red-500 text-white hover:bg-red-600 w-full"
-              onClick={() => setOpenForm(true)}
+              className="bg-gradient-primary text-white hover:bg-gradient-secondary w-full"
+              onClick={() => navigate('/register')}
             >
-              Ủng hộ ngay
+              Đăng ký ngay
+              <UserPlus className="ml-2 h-5 w-5" />
             </Button>
           </div>
         </div>
@@ -74,12 +72,6 @@ export default function Footer() {
           &copy; 2025 MedicalHope+. Mọi quyền được bảo lưu.
         </div>
       </div>
-
-      {/* Form quyên góp */}
-      <DonationForm
-        open={openForm}
-        onOpenChange={setOpenForm}
-      />
     </footer>
   );
 }

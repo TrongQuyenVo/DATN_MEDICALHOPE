@@ -19,11 +19,14 @@ import ScrollToTop from '@/components/layout/ScrollToTop';
 import ChatBubble from './ChatbotPage';
 import NavHeader from '@/components/layout/NavHeader';
 import Footer from '@/components/layout/Footer';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 
 interface AssistanceRequest {
   _id: string;
   patientId: {
     userId: {
+      _id: string;
       fullName: string;
       phone: string;
       profile?: {
@@ -66,6 +69,7 @@ const calculateAge = (dateOfBirth?: string): string => {
 export default function AssistanceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuthStore();
+  const navigate = useNavigate();
   const [assistance, setAssistance] = useState<AssistanceRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [showDonationForm, setShowDonationForm] = useState(false);
@@ -78,8 +82,8 @@ export default function AssistanceDetailPage() {
         setLoading(true);
         const { data } = await assistanceAPI.getById(id);
         setAssistance(data.data);
-      } catch (error) {
-        toast.error('Không thể tải chi tiết yêu cầu');
+      } catch (error: any) {
+        toast.error(error.response?.data?.message || 'Không thể tải chi tiết yêu cầu');
       } finally {
         setLoading(false);
       }
@@ -130,7 +134,9 @@ export default function AssistanceDetailPage() {
 
   const progress = (assistance.raisedAmount / assistance.requestedAmount) * 100;
   const remaining = assistance.requestedAmount - assistance.raisedAmount;
-  const isAdmin = ['admin', 'charity_admin'].includes(user?.role || '');
+  const isAdmin = ['admin'].includes(user?.role || '');
+  const isCharityAdmin = user?.role === 'charity_admin';
+  const isPatient = user?._id === assistance.patientId.userId._id; // Người tạo yêu cầu
 
   const getStatusConfig = () => {
     const map: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
@@ -157,6 +163,11 @@ export default function AssistanceDetailPage() {
     return new Intl.NumberFormat('vi-VN').format(amount) + ' VNĐ';
   };
 
+  // Điều kiện ủng hộ: approved + (chưa đăng nhập HOẶC charity_admin) + KHÔNG phải người tạo
+  const canDonate = assistance.status === 'approved' && !isPatient && (
+    !user || isCharityAdmin
+  );
+
   return (
     <>
       <motion.div
@@ -164,10 +175,26 @@ export default function AssistanceDetailPage() {
         animate={{ opacity: 1 }}
         className="min-h-screen bg-gradient-to-b from-background to-muted/30"
       >
-        <div className="container mx-auto px-4 py-24 max-w-5xl ">
+        <div className={`container mx-auto px-4 ${user ? '' : 'py-16'} max-w-5xl`}>
 
-          {/* HIỆN HEADER CHỈ KHI CHƯA ĐĂNG NHẬP */}
+          {/* HEADER & FOOTER khi chưa đăng nhập */}
           {!user && <NavHeader />}
+          <div className="mb-2">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                if (!user) {
+                  navigate('/'); // Chưa đăng nhập → Landing Page
+                } else {
+                  navigate('/assistance'); // Đã đăng nhập → Trang hỗ trợ
+                }
+              }}
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="h-5 w-5" />
+              Quay lại
+            </Button>
+          </div>
 
           {/* TIÊU ĐỀ + TRẠNG THÁI */}
           <motion.div
@@ -194,7 +221,7 @@ export default function AssistanceDetailPage() {
 
           {/* NỘI DUNG CHÍNH */}
           <div className="grid lg:grid-cols-3 gap-8">
-            {/* CỘT TRÁI: BỆNH NHÂN + TÀI CHÍNH */}
+            {/* CỘT TRÁI */}
             <div className="lg:col-span-2 space-y-8">
 
               {/* Thông tin bệnh nhân */}
@@ -278,7 +305,7 @@ export default function AssistanceDetailPage() {
               </Card>
             </div>
 
-            {/* CỘT PHẢI: TÀI LIỆU + HÀNH ĐỘNG */}
+            {/* CỘT PHẢI */}
             <div className="space-y-8">
 
               {/* Tài liệu */}
@@ -330,6 +357,7 @@ export default function AssistanceDetailPage() {
                 <CardContent className="p-6 space-y-4">
                   <h3 className="text-xl font-bold mb-4">Hành động</h3>
 
+                  {/* ADMIN: Duyệt / Từ chối */}
                   {isAdmin && assistance.status === 'pending' && (
                     <div className="space-y-3">
                       <Button
@@ -350,7 +378,8 @@ export default function AssistanceDetailPage() {
                     </div>
                   )}
 
-                  {!isAdmin && assistance.status === 'approved' && (
+                  {/* ỦNG HỘ: Chỉ hiện cho guest + charity_admin + KHÔNG phải người tạo */}
+                  {canDonate && (
                     <Button
                       onClick={() => setShowDonationForm(true)}
                       className="w-full bg-red-500 hover:bg-red-600 text-lg py-6"
@@ -360,6 +389,14 @@ export default function AssistanceDetailPage() {
                     </Button>
                   )}
 
+                  {/* Người tạo yêu cầu hoặc người dùng thường: chỉ xem */}
+                  {(isPatient || (user && !isCharityAdmin && !isAdmin)) && !canDonate && (
+                    <div className="text-center text-muted-foreground py-4">
+                      <p className="text-sm">Bạn có thể theo dõi tiến độ quyên góp.</p>
+                    </div>
+                  )}
+
+                  {/* HOÀN THÀNH */}
                   {assistance.status === 'completed' && (
                     <div className="text-center p-4 bg-emerald-50 rounded-lg">
                       <CheckCircle2 className="h-8 w-8 text-emerald-600 mx-auto mb-2" />
@@ -398,16 +435,18 @@ export default function AssistanceDetailPage() {
       </motion.div>
 
       {/* MODAL ỦNG HỘ */}
-      <DonationForm
-        open={showDonationForm}
-        onOpenChange={setShowDonationForm}
-        assistanceId={assistance._id}
-      />
+      {canDonate && (
+        <DonationForm
+          open={showDonationForm}
+          onOpenChange={setShowDonationForm}
+          assistanceId={assistance._id}
+        />
+      )}
 
       <ScrollToTop />
       <ChatBubble />
 
-      {/* HIỆN FOOTER CHỈ KHI CHƯA ĐĂNG NHẬP */}
+      {/* FOOTER khi chưa đăng nhập */}
       {!user && <Footer />}
     </>
   );

@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { motion } from 'framer-motion';
-import { TrendingUp, Users, Heart, Activity, CalendarDays, DollarSign, Target, Award } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { TrendingUp, TrendingDown, Users, DollarSign, CalendarDays, Target, Award } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -11,11 +10,13 @@ import ScrollToTop from '@/components/layout/ScrollToTop';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { analyticsAPI } from '@/lib/api';
+import { useAuthStore } from '@/stores/authStore';
 
 export default function AnalyticsPage() {
-  const { t } = useTranslation();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === 'admin' || user?.role === 'charity_admin';
 
   useEffect(() => {
     const fetchData = async () => {
@@ -23,35 +24,75 @@ export default function AnalyticsPage() {
         const res = await analyticsAPI.getDashboard();
         const apiData = res.data;
 
-        // Tính % cho donationCategories
+        // === 1. TỔNG DONATIONS ===
+        const totalDonations = apiData.monthlyDonations.reduce(
+          (sum: number, d: any) => sum + d.donations,
+          0
+        );
+
+        // === 2. TÍNH % TĂNG TRƯỞNG CHÍNH XÁC THEO T1-T12 ===
+        const calcGrowth = (current: number, previous: number) => {
+          if (previous === 0) return current > 0 ? 100 : 0;
+          return ((current - previous) / previous) * 100;
+        };
+
+        const now = new Date();
+        const currentMonthKey = `T${now.getMonth() + 1}`;
+        const prevMonthKey = `T${now.getMonth() === 0 ? 12 : now.getMonth()}`;
+
+        // Users
+        const currentUsers = apiData.monthlyGrowth.find((d: any) => d.month === currentMonthKey)?.users || 0;
+        const prevUsers = apiData.monthlyGrowth.find((d: any) => d.month === prevMonthKey)?.users || 0;
+        const usersGrowth = calcGrowth(currentUsers, prevUsers);
+
+        // Donations
+        const currentDonations = apiData.monthlyDonations.find((d: any) => d.month === currentMonthKey)?.donations || 0;
+        const prevDonations = apiData.monthlyDonations.find((d: any) => d.month === prevMonthKey)?.donations || 0;
+        const donationsGrowth = calcGrowth(currentDonations, prevDonations);
+
+        // Appointments
+        const appointmentsThisMonth = apiData.keyMetrics.appointmentsThisMonth || 0;
+        const appointmentsLastMonth = apiData.keyMetrics.appointmentsLastMonth || 0;
+        const appointmentsGrowth = calcGrowth(appointmentsThisMonth, appointmentsLastMonth);
+
+        // Completion Rate
+        const completionRate = apiData.keyMetrics.completionRate || 0;
+        const prevCompletionRate = apiData.keyMetrics.prevCompletionRate || 0;
+        const completionGrowth = calcGrowth(completionRate, prevCompletionRate);
+
+        // === 3. DONATION CATEGORIES % ===
         const totalCat = apiData.donationCategories.reduce((sum: number, c: any) => sum + c.amount, 0);
-        apiData.donationCategories = apiData.donationCategories.map((c: any) => ({
+        const donationCategories = apiData.donationCategories.map((c: any) => ({
           ...c,
-          percentage: totalCat > 0 ? Math.round((c.amount / totalCat) * 100) : 0
+          percentage: totalCat > 0 ? Math.round((c.amount / totalCat) * 100) : 0,
         }));
 
-        // Gộp dữ liệu tăng trưởng (thêm appointments nếu cần, hiện tại dùng 0)
+        // === 4. MONTHLY GROWTH GỘP ===
         const months = Array.from({ length: 12 }, (_, i) => `T${i + 1}`);
-        const monthlyGrowth = months.map((m, i) => {
-          const userItem = apiData.monthlyGrowth.find((d: any) => d.month === m) || { users: 0 };
-          const donationItem = apiData.monthlyDonations.find((d: any) => d.month === m) || { donations: 0 };
-          return {
-            month: m,
-            users: userItem.users,
-            donations: donationItem.donations,
-            appointments: 0 // Có thể tính thêm từ API nếu mở rộng
-          };
-        });
+        const monthlyGrowth = months.map((m) => ({
+          month: m,
+          users: apiData.monthlyGrowth.find((d: any) => d.month === m)?.users || 0,
+          donations: apiData.monthlyDonations.find((d: any) => d.month === m)?.donations || 0,
+          appointments: 0,
+        }));
 
         setData({
           ...apiData,
+          totalDonations,
+          donationCategories,
           monthlyGrowth,
+          growth: {
+            users: usersGrowth,
+            donations: donationsGrowth,
+            appointments: appointmentsGrowth,
+            completion: completionGrowth,
+          },
           keyMetrics: {
             totalUsers: apiData.keyMetrics.totalUsers,
-            totalDonations: apiData.keyMetrics.totalDonations,
-            appointmentsThisMonth: apiData.keyMetrics.appointmentsThisMonth,
-            completionRate: apiData.keyMetrics.completionRate
-          }
+            totalDonations,
+            appointmentsThisMonth,
+            completionRate,
+          },
         });
       } catch (error) {
         toast.error('Không thể tải dữ liệu thống kê');
@@ -65,6 +106,12 @@ export default function AnalyticsPage() {
 
   if (loading) return <div className="flex justify-center p-8">Đang tải dữ liệu...</div>;
   if (!data) return <div className="text-center p-8 text-red-500">Không có dữ liệu</div>;
+
+  const formatGrowth = (value: number): { formatted: string; isPositive: boolean } => {
+    if (isNaN(value)) return { formatted: '0.0%', isPositive: true };
+    const formatted = `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`;
+    return { formatted, isPositive: value >= 0 };
+  };
 
   return (
     <motion.div
@@ -87,9 +134,17 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-primary">{data.keyMetrics.totalUsers}</div>
-            <div className="flex items-center text-xs text-success mt-1">
-              <TrendingUp className="mr-1 h-3 w-3" />
-              +12% so với tháng trước {/* Có thể tính động nếu cần */}
+            {/* 1. Tổng người dùng */}
+            <div className="flex items-center text-xs mt-1">
+              {data.growth.users >= 0 ? (
+                <TrendingUp className="mr-1 h-3 w-3 text-success" />
+              ) : (
+                <TrendingDown className="mr-1 h-3 w-3 text-red-500" />
+              )}
+              <span className={data.growth.users >= 0 ? 'text-success' : 'text-red-500'}>
+                {formatGrowth(data.growth.users).formatted}
+              </span>
+              <span className="text-muted-foreground ml-1">so với tháng trước</span>
             </div>
           </CardContent>
         </Card>
@@ -100,10 +155,24 @@ export default function AnalyticsPage() {
             <DollarSign className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-success">{(data.keyMetrics.totalDonations / 1e9).toFixed(2)}B VNĐ</div>
-            <div className="flex items-center text-xs text-success mt-1">
-              <TrendingUp className="mr-1 h-3 w-3" />
-              +8.5% so với tháng trước {/* Có thể tính động */}
+            <div className="text-2xl font-bold text-success">
+              {data.keyMetrics.totalDonations >= 1e9
+                ? `${(data.keyMetrics.totalDonations / 1e9).toFixed(2)}B VNĐ`
+                : data.keyMetrics.totalDonations >= 1e6
+                  ? `${(data.keyMetrics.totalDonations / 1e6).toFixed(1)}M VNĐ`
+                  : `${data.keyMetrics.totalDonations.toLocaleString('vi-VN')} VNĐ`}
+            </div>
+            {/* 2. Tổng quyên góp */}
+            <div className="flex items-center text-xs mt-1">
+              {data.growth.donations >= 0 ? (
+                <TrendingUp className="mr-1 h-3 w-3 text-success" />
+              ) : (
+                <TrendingDown className="mr-1 h-3 w-3 text-red-500" />
+              )}
+              <span className={data.growth.donations >= 0 ? 'text-success' : 'text-red-500'}>
+                {formatGrowth(data.growth.donations).formatted}
+              </span>
+              <span className="text-muted-foreground ml-1">so với tháng trước</span>
             </div>
           </CardContent>
         </Card>
@@ -115,9 +184,16 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-primary">{data.keyMetrics.appointmentsThisMonth}</div>
-            <div className="flex items-center text-xs text-success mt-1">
-              <TrendingUp className="mr-1 h-3 w-3" />
-              +15% so với tháng trước {/* Có thể tính động */}
+            <div className="flex items-center text-xs mt-1">
+              {data.growth.appointments >= 0 ? (
+                <TrendingUp className="mr-1 h-3 w-3 text-success" />
+              ) : (
+                <TrendingDown className="mr-1 h-3 w-3 text-red-500" />
+              )}
+              <span className={data.growth.appointments >= 0 ? 'text-success' : 'text-red-500'}>
+                {formatGrowth(data.growth.appointments).formatted}
+              </span>
+              <span className="text-muted-foreground ml-1">so với tháng trước</span>
             </div>
           </CardContent>
         </Card>
@@ -129,9 +205,16 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-success">{data.keyMetrics.completionRate}%</div>
-            <div className="flex items-center text-xs text-success mt-1">
-              <TrendingUp className="mr-1 h-3 w-3" />
-              +2.1% so với tháng trước {/* Có thể tính động */}
+            <div className="flex items-center text-xs mt-1">
+              {data.growth.completion >= 0 ? (
+                <TrendingUp className="mr-1 h-3 w-3 text-success" />
+              ) : (
+                <TrendingDown className="mr-1 h-3 w-3 text-red-500" />
+              )}
+              <span className={data.growth.completion >= 0 ? 'text-success' : 'text-red-500'}>
+                {formatGrowth(data.growth.completion).formatted}
+              </span>
+              <span className="text-muted-foreground ml-1">so với tháng trước</span>
             </div>
           </CardContent>
         </Card>
@@ -139,7 +222,6 @@ export default function AnalyticsPage() {
 
       {/* Charts Row 1 */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* User Growth Chart */}
         <Card className="healthcare-card">
           <CardHeader>
             <CardTitle className="healthcare-heading">Tăng trưởng người dùng</CardTitle>
@@ -152,19 +234,12 @@ export default function AnalyticsPage() {
                 <XAxis dataKey="month" />
                 <YAxis />
                 <Tooltip />
-                <Area
-                  type="monotone"
-                  dataKey="users"
-                  stroke="hsl(var(--primary))"
-                  fill="hsl(var(--primary))"
-                  fillOpacity={0.1}
-                />
+                <Area type="monotone" dataKey="users" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.1} />
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        {/* User Distribution Pie Chart */}
         <Card className="healthcare-card">
           <CardHeader>
             <CardTitle className="healthcare-heading">Phân bố người dùng</CardTitle>
@@ -193,10 +268,7 @@ export default function AnalyticsPage() {
               {data.userDistribution.map((item: any, index: number) => (
                 <div key={index} className="flex items-center justify-between">
                   <div className="flex items-center">
-                    <div
-                      className="w-3 h-3 rounded-full mr-2"
-                      style={{ backgroundColor: item.color }}
-                    />
+                    <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: item.color }} />
                     <span className="text-sm">{item.role}</span>
                   </div>
                   <span className="text-sm font-medium">{item.count}</span>
@@ -209,7 +281,6 @@ export default function AnalyticsPage() {
 
       {/* Charts Row 2 */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Donations Chart */}
         <Card className="healthcare-card">
           <CardHeader>
             <CardTitle className="healthcare-heading">Quyên góp theo tháng</CardTitle>
@@ -222,18 +293,12 @@ export default function AnalyticsPage() {
                 <XAxis dataKey="month" />
                 <YAxis />
                 <Tooltip formatter={(value) => [`${Number(value).toLocaleString('vi-VN')} VNĐ`, 'Quyên góp']} />
-                <Line
-                  type="monotone"
-                  dataKey="donations"
-                  stroke="hsl(var(--success))"
-                  strokeWidth={2}
-                />
+                <Line type="monotone" dataKey="donations" stroke="hsl(var(--success))" strokeWidth={2} />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        {/* Weekly Appointments */}
         <Card className="healthcare-card">
           <CardHeader>
             <CardTitle className="healthcare-heading">Lịch hẹn trong tuần</CardTitle>
@@ -256,7 +321,6 @@ export default function AnalyticsPage() {
 
       {/* Bottom Section */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Donation Categories */}
         <Card className="healthcare-card">
           <CardHeader>
             <CardTitle className="healthcare-heading">Phân loại quyên góp</CardTitle>
@@ -280,7 +344,6 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        {/* Top Doctors */}
         <Card className="healthcare-card">
           <CardHeader>
             <CardTitle className="healthcare-heading">Bác sĩ tiêu biểu</CardTitle>
@@ -312,8 +375,9 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
       </div>
-      <ChatBubble />
+
       <ScrollToTop />
+      {!isAdmin && <ChatBubble />}
     </motion.div>
   );
 }

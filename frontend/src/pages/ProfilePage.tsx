@@ -408,7 +408,7 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
       <ScrollToTop />
-      <ChatBubble />
+      {!isAdmin && <ChatBubble />}
     </motion.div>
   );
 }

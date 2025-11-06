@@ -45,5 +45,11 @@ router.patch(
 // Endpoint công khai cho landing page
 router.get("/public", assistanceController.getPublicAssistances);
 router.get("/:id", assistanceController.getAssistanceById);
+router.delete(
+  "/:id",
+  auth,
+  authorize("admin", "charity_admin"),
+  assistanceController.deleteAssistance
+);
 
 module.exports = router;

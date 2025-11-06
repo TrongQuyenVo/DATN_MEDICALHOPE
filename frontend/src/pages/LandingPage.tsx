@@ -1266,35 +1266,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Call to Action Section */}
-      <section className="py-20 bg-gradient-to-r from-primary/90 to-secondary text-white">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="max-w-3xl mx-auto text-center"
-          >
-            <h2 className="text-4xl font-bold mb-6">
-              Hãy cùng chúng tôi lan tỏa yêu thương
-            </h2>
-            <p className="text-xl mb-8">
-              Tham gia MedicalHope+ ngay hôm nay để trở thành một phần của hành trình mang sức khỏe và hy vọng đến mọi người.
-            </p>
-            <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
-              <Button
-                size="lg"
-                className="btn-charity text-lg px-10 py-6 h-auto rounded-full"
-                onClick={() => navigate('/register')}
-              >
-                Đăng ký tình nguyện
-                <UserPlus className="ml-3 h-6 w-6" />
-              </Button>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
       <Footer />
       <ChatBubble />
       <ScrollToTop />

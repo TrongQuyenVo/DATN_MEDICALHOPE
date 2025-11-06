@@ -14,7 +14,7 @@ import { Trash2, Eye, EyeOff, Heart, Info } from "lucide-react";
 import axios from "axios";
 import toast from "react-hot-toast";
 import ChatBubble from "./ChatbotPage";
-import ScrollToTop from "@/components/layout/ScrollToTop";
+import { useAuthStore } from "@/stores/authStore";
 
 interface Testimonial {
   _id?: string;
@@ -30,6 +30,9 @@ interface Testimonial {
 export default function AdminTestimonials() {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [selected, setSelected] = useState<Testimonial | null>(null);
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === 'admin' || user?.role === 'charity_admin';
+
 
   // 🟢 Lấy danh sách
   const fetchTestimonials = async () => {
@@ -209,7 +212,7 @@ export default function AdminTestimonials() {
             </Table>
           </CardContent>
         </Card>
-        <ChatBubble />
+        {!isAdmin && <ChatBubble />}
       </motion.div>
 
       {/* ✅ Modal xem chi tiết */}

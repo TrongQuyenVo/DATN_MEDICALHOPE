@@ -6,7 +6,6 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const http = require("http");
 const socketIo = require("socket.io");
-const path = require("path");
 const morgan = require("morgan");
 const { auth, authorize } = require("./middleware/auth");
 require("dotenv").config();
@@ -39,7 +38,6 @@ const adminRoutes = require("./routes/admin");
 // Security middleware
 app.use(
   helmet({
-    // cho phép resource (ảnh trong /uploads) được load từ khác origin
     crossOriginResourcePolicy: { policy: "cross-origin" },
   })
 );
@@ -50,54 +48,37 @@ app.use(
   })
 );
 app.use(morgan("dev"));
-// Rate limiting
+
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100,
 });
 app.use(limiter);
 
-// Body parsing middleware
+// Body parsing
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-// Serve static files for images
+// Static files
 app.use("/uploads", express.static("uploads"));
 
-// Database connection
+// Database
 mongoose.connect(
   process.env.MONGODB_URI || "mongodb://localhost:27017/medical-charity",
-  {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  }
+  { useNewUrlParser: true, useUnifiedTopology: true }
 );
+mongoose.connection.on("connected", () => console.log("Connected to MongoDB"));
+mongoose.connection.on("error", (err) => console.error("MongoDB error:", err));
 
-mongoose.connection.on("connected", () => {
-  console.log("Connected to MongoDB");
-});
-
-mongoose.connection.on("error", (err) => {
-  console.error("MongoDB connection error:", err);
-});
-
-// Socket.io for real-time notifications
+// Socket.io
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
-
-  socket.on("join", (userId) => {
-    socket.join(userId);
-  });
-
-  socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
-  });
+  socket.on("join", (userId) => socket.join(userId));
+  socket.on("disconnect", () => console.log("User disconnected:", socket.id));
 });
-
-// Make io available in routes
 app.set("io", io);
 
-// Routes
+// === TẤT CẢ ROUTES ĐƯỢC ĐĂNG KÝ TRƯỚC ===
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/patients", patientRoutes);
@@ -117,7 +98,8 @@ app.use(
   analyticsRoutes
 );
 app.use("/api/admin", adminRoutes);
-// Health check endpoint
+
+// Health check
 app.get("/health", (req, res) => {
   res.status(200).json({
     status: "OK",
@@ -126,7 +108,7 @@ app.get("/health", (req, res) => {
   });
 });
 
-// 404 handler
+// 404 handler – ĐẶT CUỐI CÙNG!
 app.use("*", (req, res) => {
   res.status(404).json({
     success: false,

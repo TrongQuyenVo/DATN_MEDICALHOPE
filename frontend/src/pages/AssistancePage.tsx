@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   HandHeart, AlertCircle, CheckCircle, Clock, XCircle,
-  DollarSign, Eye
+  DollarSign, Eye, Trash2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -80,6 +80,21 @@ export default function AssistancePage() {
       await fetchRequests();
     } catch (error) {
       toast.error('Lỗi khi từ chối yêu cầu');
+    }
+  };
+
+  // XÓA YÊU CẦU - CHỈ ADMIN
+  const handleDeleteRequest = async (id: string) => {
+    if (!window.confirm('Bạn có chắc muốn xóa yêu cầu này? Hành động này không thể hoàn tác.')) {
+      return;
+    }
+
+    try {
+      await assistanceAPI.delete(id); // Gọi API DELETE
+      toast.success('Đã xóa yêu cầu!');
+      await fetchRequests();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Lỗi khi xóa yêu cầu');
     }
   };
 
@@ -201,11 +216,14 @@ export default function AssistancePage() {
         ) : (
           <div className="space-y-4">
             {visibleRequests.map((req, i) => {
-              const progress = (req.raisedAmount / req.requestedAmount) * 100 || 0;
+              // TÍNH PROGRESS AN TOÀN
+              const progress = req.requestedAmount > 0
+                ? Math.min(100, (req.raisedAmount / req.requestedAmount) * 100)
+                : 0;
+
               const status = getStatusConfig(req.status);
               const StatusIcon = status.icon;
               const myPatientId = (user as any).patientId?._id || user.id;
-              const isOwner = String(req.patientId._id) === String(myPatientId);
               const patientName =
                 typeof req.patientId.userId === 'object'
                   ? req.patientId.userId?.fullName
@@ -251,7 +269,8 @@ export default function AssistancePage() {
 
                         {/* RIGHT: PROGRESS + ACTION */}
                         <div className="flex flex-col items-end gap-3 w-full lg:w-64">
-                          {req.status !== 'pending' && (
+                          {/* PROGRESS - CHỈ HIỆN KHI ĐÃ DUYỆT */}
+                          {['approved', 'in_progress', 'completed'].includes(req.status) && req.requestedAmount > 0 && (
                             <div className="w-full space-y-1">
                               <div className="flex justify-between text-sm">
                                 <span className="font-medium">
@@ -263,11 +282,19 @@ export default function AssistancePage() {
                               </div>
                               <Progress value={progress} className="h-2" />
                               <p className="text-xs text-right text-muted-foreground">
-                                {progress.toFixed(0)}% hoàn thành
+                                {progress.toFixed(1)}% hoàn thành
                               </p>
                             </div>
                           )}
 
+                          {/* PENDING */}
+                          {req.status === 'pending' && (
+                            <div className="w-full text-right text-xs text-muted-foreground">
+                              Chờ duyệt...
+                            </div>
+                          )}
+
+                          {/* NÚT HÀNH ĐỘNG */}
                           <div className="flex gap-2 w-full">
                             {isAdmin && req.status === 'pending' ? (
                               <>
@@ -285,6 +312,25 @@ export default function AssistancePage() {
                                   className="flex-1 text-red-600 border-red-600"
                                 >
                                   <XCircle className="mr-1 h-3 w-3" /> Từ chối
+                                </Button>
+                              </>
+                            ) : isAdmin ? (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={(e) => { e.stopPropagation(); navigate(`/assistance/${req._id}`); }}
+                                  className="flex-1"
+                                >
+                                  <Eye className="mr-1 h-3 w-3" /> Xem
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={(e) => { e.stopPropagation(); handleDeleteRequest(req._id); }}
+                                  className="flex-1"
+                                >
+                                  <Trash2 className="mr-1 h-3 w-3" /> Xóa
                                 </Button>
                               </>
                             ) : (
@@ -312,7 +358,7 @@ export default function AssistancePage() {
       {/* FORMS */}
       <AssistanceRequestForm open={showRequestForm} onOpenChange={setShowRequestForm} />
       <ScrollToTop />
-      <ChatBubble />
+      {!isAdmin && <ChatBubble />}
     </motion.div>
   );
 }

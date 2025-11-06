@@ -222,3 +222,27 @@ exports.updateAssistanceStatus = async (req, res) => {
     });
   }
 };
+
+exports.deleteAssistance = async (req, res) => {
+  try {
+    console.log("Xóa yêu cầu hỗ trợ với ID:", req.params.id); // Log ID
+    const assistance = await PatientAssistance.findByIdAndDelete(req.params.id);
+    if (!assistance) {
+      return res.status(404).json({
+        success: false,
+        message: "Yêu cầu không tồn tại",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Đã xóa yêu cầu hỗ trợ",
+    });
+  } catch (error) {
+    console.error("Delete assistance error:", error); // Log lỗi chi tiết
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server",
+    });
+  }
+};

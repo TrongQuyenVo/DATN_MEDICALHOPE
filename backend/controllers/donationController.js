@@ -1,32 +1,36 @@
 const Donation = require("../models/Donation");
 const PatientAssistance = require("../models/PatientAssistance");
 
-
 // Create donation (chỉ dùng VNPAY)
 exports.createDonation = async (req, res) => {
   try {
     const {
       amount,
-      assistanceId,  // NHẬN TỪ FRONTEND
+      assistanceId, // NHẬN TỪ FRONTEND
       isAnonymous,
       paymentMethod,
     } = req.body;
 
     if (paymentMethod !== "vnpay") {
-      return res.status(400).json({ success: false, message: "Chỉ hỗ trợ VNPAY" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Chỉ hỗ trợ VNPAY" });
     }
 
     if (!amount || amount <= 0) {
-      return res.status(400).json({ success: false, message: "Số tiền không hợp lệ" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Số tiền không hợp lệ" });
     }
 
     // TẠO DONATION
     const donation = new Donation({
       userId: req.user._id,
-      assistanceId,  // GÁN
+      assistanceId, // GÁN
       amount,
       isAnonymous: isAnonymous || false,
       paymentMethod,
+      status: "completed",
     });
 
     await donation.save();

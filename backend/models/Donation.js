@@ -1,3 +1,4 @@
+// models/Donation.js
 const mongoose = require("mongoose");
 
 const DonationSchema = new mongoose.Schema(
@@ -8,7 +9,6 @@ const DonationSchema = new mongoose.Schema(
       required: true,
     },
     assistanceId: {
-      // THÊM
       type: mongoose.Schema.Types.ObjectId,
       ref: "PatientAssistance",
     },
@@ -28,8 +28,8 @@ const DonationSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "completed", "failed"],
-      default: "pending",
+      enum: ["completed"], 
+      default: "completed", 
     },
   },
   { timestamps: true }

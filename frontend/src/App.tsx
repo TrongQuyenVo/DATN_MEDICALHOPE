@@ -259,19 +259,8 @@ const App = () => {
                 }
               />
 
-<<<<<<< HEAD
               <Route path="/support-requests" element={<AllSupportRequests />} />
               <Route path="/assistance/:id" element={<AssistanceDetailPage />} />
-=======
-              <Route
-                path="/support-requests"
-                element={<AllSupportRequests />}
-              />
-              <Route
-                path="/assistance/:id"
-                element={<AssistanceDetailPage />}
-              />
->>>>>>> df4ccd2eabaa9318f07f7e15ffb59435aab12338
 
 
               {/* Catch-all route */}
