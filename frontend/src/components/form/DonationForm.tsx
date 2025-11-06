@@ -32,6 +32,7 @@ import { sortObject } from "@/utils/sortObject";
 import { calculateVnpSecureHash } from "@/utils/calculateVnpSecureHash";
 import { useAuthStore } from "@/stores/authStore";
 import { assistanceAPI, donationsAPI } from "@/lib/api";
+import { useAppStore } from "@/stores/appStore";
 
 interface PatientAssistance {
   _id: string;
@@ -53,7 +54,7 @@ interface PatientAssistance {
 interface DonationFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  assistanceId?: string; // Thay campaign bằng assistanceId
+  assistanceId?: string;
 }
 
 interface FormData {
@@ -70,15 +71,11 @@ const schema = yup.object({
     .number()
     .required("Vui lòng nhập số tiền quyên góp")
     .min(10000, "Số tiền tối thiểu là 10,000 VNĐ")
-    .test(
-      "max",
-      "Số tiền vượt quá số còn thiếu",
-      function (value) {
-        const { assistance } = this.parent;
-        if (!assistance || !value) return true;
-        return value <= assistance.requestedAmount - assistance.raisedAmount;
-      }
-    ),
+    .test("max", "Số tiền vượt quá số còn thiếu", function (value) {
+      const { assistance } = this.parent;
+      if (!assistance || !value) return true;
+      return value <= assistance.requestedAmount - assistance.raisedAmount;
+    }),
 
   donorName: yup.string().when("$isAnonymous", {
     is: false,
@@ -139,7 +136,9 @@ export default function DonationForm({
           const res = await assistanceAPI.getById(assistanceId);
           setAssistance(res.data.data);
         } catch (error: any) {
-          toast.error(error.response?.data?.message || "Không thể tải thông tin yêu cầu");
+          toast.error(
+            error.response?.data?.message || "Không thể tải thông tin yêu cầu"
+          );
           onOpenChange(false);
         } finally {
           setLoading(false);
@@ -185,12 +184,25 @@ export default function DonationForm({
     setSelectedAmount(amount);
     setValue("amount", amount);
   };
-
+  const { setPaymentInfo } = useAppStore();
   const onSubmit = async (data: FormData) => {
-    if (!assistance) return;
+    console.log("BƯỚC 1: Form được submit", data);
+
+    if (!assistance) {
+      console.error("Không có thông tin assistance");
+      toast.error("Không có thông tin yêu cầu hỗ trợ");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
+      console.log("BƯỚC 2: Gọi API tạo donation...", {
+        assistanceId: assistance._id,
+        amount: data.amount,
+        isAnonymous,
+        paymentMethod: data.paymentMethod,
+      });
+
       // === TẠO DONATION TRƯỚC ===
       const donationRes = await donationsAPI.create({
         assistanceId: assistance._id,
@@ -203,16 +215,31 @@ export default function DonationForm({
         paymentMethod: data.paymentMethod,
       });
 
+      console.log("BƯỚC 3: Tạo donation thành công", donationRes.data);
+
       if (data.paymentMethod === "vnpay") {
         const { vnp_TmnCode, vnp_HashSecret, vnp_Url, BASE_URL } = ENV;
-        const returnUrl = `${BASE_URL}/donation-result?donationId=${donationRes.data.data._id}`;
-        if (!vnp_HashSecret || !vnp_Url || !vnp_TmnCode) {
-          toast.error("Cấu hình VNPay chưa đầy đủ");
+        const donationId = donationRes.data.donation._id;
+        setPaymentInfo({
+          donationId,
+          amount: data.amount,
+          method: data.paymentMethod,
+          status: "pending",
+        });
+        const returnUrl = `${BASE_URL}/xac-nhan-thanh-toan`;
+        if (!vnp_HashSecret || !vnp_Url || !vnp_TmnCode || !returnUrl) {
+          alert("Không thể thực hiện thanh toán, thiếu thông tin cấu hình.");
           return;
         }
 
-        const createDate = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, "");
-        const orderId = `DON${Date.now()}`;
+        const createDate = new Date()
+          .toISOString()
+          .slice(0, 19)
+          .replace(/[-:T]/g, "");
+        const orderId =
+          new Date().getHours().toString().padStart(2, "0") +
+          new Date().getMinutes().toString().padStart(2, "0") +
+          Math.floor(Math.random() * 10000);
 
         const paymentData: any = {
           vnp_Amount: data.amount * 100,
@@ -221,30 +248,117 @@ export default function DonationForm({
           vnp_CurrCode: "VND",
           vnp_IpAddr: "127.0.0.1",
           vnp_Locale: "vn",
-          vnp_OrderInfo: `Quyen gop cho ${assistance.title}`,
-          vnp_OrderType: "250001",
+          vnp_OrderInfo: "p",
+          vnp_OrderType: "250000",
           vnp_ReturnUrl: returnUrl,
           vnp_TxnRef: orderId,
           vnp_Version: "2.1.0",
-          vnp_TmnCode,
+          vnp_TmnCode: vnp_TmnCode,
         };
 
         const sortedParams = sortObject(paymentData)
           .map((key) => `${key}=${encodeURIComponent(paymentData[key])}`)
           .join("&");
 
-        const vnp_SecureHash = calculateVnpSecureHash(sortedParams, vnp_HashSecret);
+        const vnp_SecureHash = calculateVnpSecureHash(
+          sortedParams,
+          vnp_HashSecret
+        );
         const paymentUrl = `${vnp_Url}?${sortedParams}&vnp_SecureHash=${vnp_SecureHash}`;
-
+        alert(`Thanh toán qua VNPay với số tiền: ${data.amount} VND`);
         window.location.href = paymentUrl;
+        // const { vnp_TmnCode, vnp_HashSecret, vnp_Url, BASE_URL } = ENV;
+
+        // console.log("BƯỚC 4: Kiểm tra cấu hình VNPay", {
+        //   vnp_TmnCode: vnp_TmnCode ? "OK" : "MISSING",
+        //   vnp_HashSecret: vnp_HashSecret ? "OK" : "MISSING",
+        //   vnp_Url: vnp_Url || "MISSING",
+        //   BASE_URL,
+        // });
+
+        // if (!vnp_HashSecret || !vnp_Url || !vnp_TmnCode) {
+        //   console.error("Cấu hình VNPay thiếu");
+        //   toast.error("Cấu hình VNPay chưa đầy đủ");
+        //   return;
+        // }
+
+        // const donationId = donationRes.data.donation._id;
+        // const returnUrl = `${BASE_URL}/donation-result?donationId=${donationId}`;
+
+        // const createDate = new Date().toISOString().slice(0, 19).replace(/[-T:]/g, "");
+        // const orderId = `DON${Date.now()}${Math.floor(Math.random() * 1000)}`;
+
+        // const paymentData: any = {
+        //   vnp_Amount: data.amount * 100,
+        //   vnp_Command: "pay",
+        //   vnp_CreateDate: createDate,
+        //   vnp_CurrCode: "VND",
+        //   vnp_IpAddr: "127.0.0.1",
+        //   vnp_Locale: "vn",
+        //   vnp_OrderInfo: `Quyen gop cho ${assistance.title}`,
+        //   vnp_OrderType: "250001",
+        //   vnp_ReturnUrl: returnUrl,
+        //   vnp_TxnRef: orderId,
+        //   vnp_Version: "2.1.0",
+        //   vnp_TmnCode,
+        // };
+
+        // console.log("BƯỚC 5: Dữ liệu gửi VNPay (trước sort)", paymentData);
+
+        // const sortedParams = Object.keys(paymentData)
+        //   .sort((a, b) => a.localeCompare(b))
+        //   .filter((key) => paymentData[key] != null && paymentData[key] !== "")
+        //   .map((key) => `${key}=${encodeURIComponent(paymentData[key])}`)
+        //   .join("&");
+
+        // console.log("BƯỚC 6: Params đã sort & encode", sortedParams);
+
+        // const vnp_SecureHash = calculateVnpSecureHash(sortedParams, vnp_HashSecret);
+        // console.log("BƯỚC 7: SecureHash", vnp_SecureHash);
+
+        // const finalUrl = `${vnp_Url}?${sortedParams}&vnp_SecureHash=${vnp_SecureHash}`;
+        // console.log("BƯỚC 8: URL thanh toán đầy đủ", finalUrl);
+
+        // // TẠO FORM ĐỘNG
+        // const form = document.createElement("form");
+        // form.method = "POST";
+        // form.action = vnp_Url;
+        // form.target = "_blank";
+
+        // const params = new URLSearchParams(sortedParams);
+        // params.append("vnp_SecureHash", vnp_SecureHash);
+
+        // console.log("BƯỚC 9: Các input trong form", Object.fromEntries(params));
+
+        // for (const [key, value] of params.entries()) {
+        //   const input = document.createElement("input");
+        //   input.type = "hidden";
+        //   input.name = key;
+        //   input.value = value;
+        //   form.appendChild(input);
+        // }
+
+        // document.body.appendChild(form);
+        // console.log("BƯỚC 10: Form đã thêm vào DOM và submit...");
+        // form.submit();
+        // document.body.removeChild(form);
+
+        // toast.success("Đang chuyển đến cổng thanh toán...");
+        // onOpenChange(false);
       } else {
         toast.success("Quyên góp thành công!");
         onOpenChange(false);
       }
     } catch (error: any) {
+      console.error("LỖI TOÀN BỘ", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       toast.error(error.response?.data?.message || "Lỗi khi quyên góp");
     } finally {
       setIsSubmitting(false);
+      console.log("BƯỚC CUỐI: Kết thúc submit");
     }
   };
 
@@ -279,13 +393,16 @@ export default function DonationForm({
             Hỗ trợ bệnh nhân
           </DialogTitle>
           <DialogDescription>
-            Đóng góp của bạn giúp {assistance.patientId.userId.fullName} vượt qua khó khăn
+            Đóng góp của bạn giúp {assistance.patientId.userId.fullName} vượt
+            qua khó khăn
           </DialogDescription>
         </DialogHeader>
 
         {/* THÔNG TIN YÊU CẦU HỖ TRỢ */}
         <div className="bg-muted/50 p-4 rounded-lg space-y-3">
-          <h3 className="font-semibold healthcare-heading">{assistance.title}</h3>
+          <h3 className="font-semibold healthcare-heading">
+            {assistance.title}
+          </h3>
           <p className="text-sm text-muted-foreground">
             <strong>Bệnh:</strong> {assistance.medicalCondition} •{" "}
             <strong>Độ khẩn:</strong> {assistance.urgency}
@@ -302,7 +419,8 @@ export default function DonationForm({
             </div>
             <Progress value={progress} className="h-2" />
             <p className="text-xs text-muted-foreground">
-              {progress.toFixed(1)}% • Còn thiếu: {remaining.toLocaleString("vi-VN")} VNĐ
+              {progress.toFixed(1)}% • Còn thiếu:{" "}
+              {remaining.toLocaleString("vi-VN")} VNĐ
             </p>
           </div>
         </div>
@@ -345,14 +463,17 @@ export default function DonationForm({
                 }}
               />
               {errors.amount && (
-                <p className="text-sm text-destructive">{errors.amount.message}</p>
+                <p className="text-sm text-destructive">
+                  {errors.amount.message}
+                </p>
               )}
             </div>
 
             {watchedAmount && (
               <div className="bg-green-50 dark:bg-green-950 p-3 rounded-lg">
                 <p className="text-green-800 dark:text-green-200 font-medium">
-                  Số tiền quyên góp: {Number(watchedAmount).toLocaleString("vi-VN")} VNĐ
+                  Số tiền quyên góp:{" "}
+                  {Number(watchedAmount).toLocaleString("vi-VN")} VNĐ
                 </p>
               </div>
             )}
@@ -371,7 +492,9 @@ export default function DonationForm({
                 <Checkbox
                   id="anonymous"
                   checked={isAnonymous}
-                  onCheckedChange={(checked) => setIsAnonymous(checked === true)}
+                  onCheckedChange={(checked) =>
+                    setIsAnonymous(checked === true)
+                  }
                 />
                 <Label htmlFor="anonymous" className="text-sm">
                   Quyên góp ẩn danh
@@ -389,7 +512,9 @@ export default function DonationForm({
                   {...register("donorName")}
                 />
                 {errors.donorName && (
-                  <p className="text-sm text-destructive">{errors.donorName.message}</p>
+                  <p className="text-sm text-destructive">
+                    {errors.donorName.message}
+                  </p>
                 )}
               </div>
 
@@ -404,7 +529,9 @@ export default function DonationForm({
                     {...register("donorEmail")}
                   />
                   {errors.donorEmail && (
-                    <p className="text-sm text-destructive">{errors.donorEmail.message}</p>
+                    <p className="text-sm text-destructive">
+                      {errors.donorEmail.message}
+                    </p>
                   )}
                 </div>
 
@@ -418,7 +545,9 @@ export default function DonationForm({
                     {...register("donorPhone")}
                   />
                   {errors.donorPhone && (
-                    <p className="text-sm text-destructive">{errors.donorPhone.message}</p>
+                    <p className="text-sm text-destructive">
+                      {errors.donorPhone.message}
+                    </p>
                   )}
                 </div>
               </div>
@@ -455,7 +584,9 @@ export default function DonationForm({
               </SelectContent>
             </Select>
             {errors.paymentMethod && (
-              <p className="text-sm text-destructive">{errors.paymentMethod.message}</p>
+              <p className="text-sm text-destructive">
+                {errors.paymentMethod.message}
+              </p>
             )}
           </div>
 

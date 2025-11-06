@@ -7,67 +7,51 @@ exports.createDonation = async (req, res) => {
   try {
     const {
       amount,
-      campaignId,
+      assistanceId,  // NHẬN TỪ FRONTEND
       isAnonymous,
-      purpose,
-      assistanceId,
       paymentMethod,
     } = req.body;
 
-    // Chỉ cho phép VNPAY
     if (paymentMethod !== "vnpay") {
-      return res.status(400).json({
-        success: false,
-        message: "Chỉ hỗ trợ thanh toán qua VNPAY",
-      });
+      return res.status(400).json({ success: false, message: "Chỉ hỗ trợ VNPAY" });
     }
 
-    // Validate số tiền
     if (!amount || amount <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Số tiền quyên góp không hợp lệ",
-      });
+      return res.status(400).json({ success: false, message: "Số tiền không hợp lệ" });
     }
 
-    // Tạo donation mới
+    // TẠO DONATION
     const donation = new Donation({
       userId: req.user._id,
-      campaignId,
+      assistanceId,  // GÁN
       amount,
       isAnonymous: isAnonymous || false,
-      purpose: purpose || "",
       paymentMethod,
     });
 
     await donation.save();
 
-    // Nếu gắn với yêu cầu hỗ trợ bệnh nhân
+    // CẬP NHẬT ASSISTANCE
     if (assistanceId) {
       const assistance = await PatientAssistance.findById(assistanceId);
-      if (assistance && donation.type === "money") {
-        assistance.raisedAmount += donation.amount;
+      if (assistance) {
+        assistance.raisedAmount += amount;
         assistance.donationIds.push(donation._id);
         await assistance.save();
       }
     }
 
-    // Giả lập tạo liên kết thanh toán VNPAY (sẽ thay bằng API thật)
     const payUrl = `https://sandbox.vnpayment.vn/pay/${donation._id}`;
 
     return res.status(201).json({
       success: true,
-      message:
-        "Tạo quyên góp thành công. Chuyển hướng đến VNPAY để thanh toán.",
+      message: "Tạo quyên góp thành công",
       donation,
       payUrl,
     });
   } catch (error) {
     console.error("Create donation error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Lỗi máy chủ",
-    });
+    return res.status(500).json({ success: false, message: "Lỗi máy chủ" });
   }
 };
 
@@ -77,21 +61,20 @@ exports.getDonations = async (req, res) => {
     const { limit = 10, page = 1, sort = "-createdAt", status } = req.query;
     let query = {};
 
-    // Phân quyền: charity_admin và admin thấy tất cả
     if (!["admin", "charity_admin"].includes(req.user.role)) {
       query.userId = req.user._id;
     }
 
     if (status) query.status = status;
 
-    // Sort động
     const sortObj = {};
     const sortField = sort.startsWith("-") ? sort.slice(1) : sort;
     sortObj[sortField] = sort.startsWith("-") ? -1 : 1;
 
+    // BỎ populate campaignId
     const donations = await Donation.find(query)
       .populate("userId", "fullName email")
-      .populate("campaignId", "title")
+      .populate("assistanceId", "title") // LẤY TITLE
       .sort(sortObj)
       .limit(parseInt(limit))
       .skip((parseInt(page) - 1) * parseInt(limit));
@@ -100,7 +83,7 @@ exports.getDonations = async (req, res) => {
 
     return res.json({
       success: true,
-      data: donations, // ĐỔI TỪ "donations" → "data"
+      data: donations,
       pagination: {
         total,
         pages: Math.ceil(total / parseInt(limit)),

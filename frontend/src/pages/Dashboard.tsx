@@ -8,16 +8,13 @@ import PatientDashboard from '@/components/dashboard/PatientDashboard';
 import DoctorDashboard from '@/components/dashboard/DoctorDashboard';
 import AdminDashboard from '@/components/dashboard/AdminDashboard';
 import CharityAdminDashboard from '@/components/dashboard/CharityAdminDashboard';
-import ChatBubble from './ChatbotPage';
 
 export default function Dashboard() {
   const { user } = useAuthStore();
   const { t } = useTranslation();
 
-  if (!user) return null;
-
   // ==========================
-  // 🌞 Danh sách lời nhắn tích cực
+  // 🌞 Danh sách lời nhắn tích cực (7 câu cho mỗi nhóm)
   // ==========================
   const doctorMessages = [
     'Cảm ơn bạn đã dành cả trái tim để chăm sóc bệnh nhân hôm nay 💙',
@@ -25,6 +22,8 @@ export default function Dashboard() {
     'Hãy tự hào vì bạn đang chữa lành thế giới từng ngày 🌍',
     'Bạn không chỉ là bác sĩ, bạn là nguồn hy vọng cho rất nhiều người 💫',
     'Chúc bạn một ngày làm việc tràn đầy năng lượng và niềm vui 🌞',
+    'Mỗi ca khám là một cơ hội để lan tỏa lòng nhân ái ❤️',
+    'Thế giới cần nhiều người như bạn — vừa giỏi chuyên môn, vừa đầy tình thương 🌟',
   ];
 
   const patientMessages = [
@@ -33,6 +32,8 @@ export default function Dashboard() {
     'Bạn đang làm rất tốt — đừng bao giờ bỏ cuộc ❤️',
     'Sức khỏe của bạn quan trọng và bạn xứng đáng được hạnh phúc 🌸',
     'Cuộc sống vẫn còn rất nhiều điều tốt đẹp đang chờ bạn 🌈',
+    'Mỗi bước tiến nhỏ hôm nay là một chiến thắng lớn ngày mai 🌻',
+    'Hãy mỉm cười, vì bạn đã đi được một chặng đường thật đáng nể 🌷',
   ];
 
   const charityMessages = [
@@ -41,6 +42,8 @@ export default function Dashboard() {
     'Bạn đang viết nên những câu chuyện nhân ái đầy ý nghĩa 🌸',
     'Một hành động nhỏ của bạn có thể thay đổi cuộc đời ai đó 🌱',
     'Cảm ơn vì mỗi ngày bạn đều lan tỏa lòng tốt 💖',
+    'Từng nụ cười bạn mang lại là ánh sáng trong cuộc sống của ai đó 💫',
+    'Sự tử tế của bạn là ngọn lửa ấm áp giữa cuộc sống này 🔥',
   ];
 
   const adminMessages = [
@@ -49,30 +52,33 @@ export default function Dashboard() {
     'Một ngày tuyệt vời để làm điều tuyệt vời — hãy bắt đầu nào! 🌞',
     'Chúc bạn giữ vững tinh thần lãnh đạo và sự sáng suốt hôm nay 🌟',
     'Một quản trị viên xuất sắc luôn biết cách lan tỏa năng lượng tích cực ✨',
+    'Sự kiên định và tầm nhìn của bạn là nền tảng cho mọi thành công 🚀',
+    'Bạn là người giữ cho mọi thứ vận hành trơn tru — cảm ơn vì điều đó 🙌',
   ];
 
   // ==========================
-  // 🔢 Lấy lời nhắn ngẫu nhiên theo ngày
+  // 🔢 Lấy lời nhắn ngẫu nhiên theo ngày trong tuần
   // ==========================
   const dailyMessage = useMemo(() => {
-    const today = new Date().toDateString();
-    const seed = today.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    if (!user) return t('haveAGreatDay');
 
-    const randomMessage = (arr: string[]) => arr[seed % arr.length];
+    const dayOfWeek = new Date().getDay(); 
+
+    const pickMessage = (arr: string[]) => arr[dayOfWeek % arr.length];
 
     switch (user.role) {
       case 'doctor':
-        return randomMessage(doctorMessages);
+        return pickMessage(doctorMessages);
       case 'patient':
-        return randomMessage(patientMessages);
+        return pickMessage(patientMessages);
       case 'charity_admin':
-        return randomMessage(charityMessages);
+        return pickMessage(charityMessages);
       case 'admin':
-        return randomMessage(adminMessages);
+        return pickMessage(adminMessages);
       default:
         return t('haveAGreatDay');
     }
-  }, [user.role, t]);
+  }, [user, t]);
 
   // ==========================
   // 🧩 Render Dashboard
@@ -116,7 +122,7 @@ export default function Dashboard() {
 
           {/* 💬 Lời nhắn tích cực có hiệu ứng fade-in */}
           <motion.p
-            key={dailyMessage} // 👈 giúp animate mỗi khi sang ngày mới
+            key={dailyMessage}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1 }}
@@ -129,8 +135,6 @@ export default function Dashboard() {
 
       {/* Role-specific Dashboard */}
       {renderDashboard()}
-      <ChatBubble />
-
     </motion.div>
   );
 }

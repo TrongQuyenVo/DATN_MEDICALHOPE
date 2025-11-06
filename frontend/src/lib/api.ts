@@ -154,6 +154,9 @@ export const assistanceAPI = {
 export const analyticsAPI = {
   getDashboard: () => api.get('/analytics/admin-dashboard'),
   getCharityDashboard: () => api.get('/analytics/charity-dashboard'),
+  getPendingCounts: () => api.get('/analytics/pending-counts'),
+  getMonthlyTargets: () => api.get('/analytics/monthly-targets'),
+  getRecentActivities: () => api.get('/analytics/recent-activities'),
 };
 // api/index.js
 export const adminAPI = {

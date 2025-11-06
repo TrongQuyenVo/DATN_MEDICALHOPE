@@ -78,16 +78,28 @@ exports.getAllDoctors = async (req, res) => {
       query.telehealthEnabled = telehealthEnabled === "true";
 
     const doctors = await Doctor.find(query)
-      .populate("userId", "fullName email avatar")
+      .populate({
+        path: "userId",
+        select: "fullName email avatar profile.address", // Lấy address
+      })
       .sort({ experience: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
 
     const total = await Doctor.countDocuments(query);
 
+    // GÁN location từ profile.address
+    const formattedDoctors = doctors.map((doc) => {
+      const doctor = doc.toObject();
+      return {
+        ...doctor,
+        location: doctor.userId?.profile?.address || "Không xác định",
+      };
+    });
+
     res.json({
       success: true,
-      doctors,
+      doctors: formattedDoctors,
       pagination: {
         total,
         pages: Math.ceil(total / limit),

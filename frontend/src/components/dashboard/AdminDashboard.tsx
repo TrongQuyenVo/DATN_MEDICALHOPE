@@ -1,12 +1,19 @@
 import { motion } from 'framer-motion';
 import { Users, Stethoscope, Gift, Building2, TrendingUp, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { analyticsAPI, partnersAPI, patientsAPI } from '@/lib/api'; // ĐÃ CÓ
+import { analyticsAPI, partnersAPI, patientsAPI } from '@/lib/api';
+import { useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface DashboardData {
   keyMetrics: {
@@ -16,19 +23,25 @@ interface DashboardData {
     completionRate: number;
   };
   userDistribution: Array<{ role: string; count: number }>;
+  previousMetrics?: {
+    totalUsers: number;
+    doctors: number;
+    donations: number;
+    partners: number;
+  };
 }
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
 
-  // 1. LẤY DỮ LIỆU CHÍNH TỪ /analytics/dashboard
+  // 1. LẤY DỮ LIỆU CHÍNH TỪ /analytics/admin-dashboard
   const {
     data: dashboardData,
     isLoading: loadingMain,
     error: mainError,
-  } = useQuery<DashboardData>({
+  } = useQuery({
     queryKey: ['admin-dashboard'],
-    queryFn: () => analyticsAPI.getDashboard().then(res => res.data), // ĐÃ ĐÚNG
+    queryFn: () => analyticsAPI.getDashboard().then(res => res.data), // Đảm bảo API trả đúng
   });
 
   // 2. LẤY SỐ LƯỢNG TỔ CHỨC TỪ THIỆN
@@ -46,18 +59,47 @@ export default function AdminDashboard() {
     isLoading: loadingNewPatients,
     error: newPatientsError,
   } = useQuery({
-    queryKey: ['new-patients-count', 30],
+    queryKey: ['new-patients-30days'],
     queryFn: () => patientsAPI.getNewCount(30).then(res => res.data),
-    staleTime: 5 * 60 * 1000, // Cache 5 phút
+    staleTime: 5 * 60 * 1000,
   });
 
-  if (newPatientsError) {
-    toast.error('Không thể tải số bệnh nhân mới');
-  }
+  // 4. PENDING REQUESTS
+  const {
+    data: pendingData,
+    isLoading: loadingPending,
+  } = useQuery({
+    queryKey: ['pending-counts'],
+    queryFn: () => analyticsAPI.getPendingCounts().then(res => res.data),
+  });
 
-  // Xử lý lỗi
+  // 5. MỤC TIÊU THÁNG
+  const {
+    data: targetsData,
+    isLoading: loadingTargets,
+  } = useQuery({
+    queryKey: ['monthly-targets'],
+    queryFn: () => analyticsAPI.getMonthlyTargets().then(res => res.data),
+  });
+
+  // 6. HOẠT ĐỘNG GẦN ĐÂY
+  const {
+    data: activitiesData,
+    isLoading: loadingActivities,
+  } = useQuery({
+    queryKey: ['recent-activities'],
+    queryFn: () => analyticsAPI.getRecentActivities().then(res => res.data),
+    refetchInterval: 60_000,
+  });
+
+  // Modal state
+  const [openActivities, setOpenActivities] = useState(false);
+
+  // XỬ LÝ LỖI
   if (mainError) toast.error('Không thể tải dữ liệu dashboard');
+  if (newPatientsError) toast.error('Không thể tải số bệnh nhân mới');
 
+  // LOADING STATE
   if (loadingMain) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -66,6 +108,7 @@ export default function AdminDashboard() {
     );
   }
 
+  // EMPTY STATE
   if (!dashboardData) {
     return (
       <div className="text-center p-8 text-red-500">
@@ -74,72 +117,90 @@ export default function AdminDashboard() {
     );
   }
 
+  // TÍNH TOÁN DỮ LIỆU THỰC TẾ
   const volunteerDoctors = dashboardData.userDistribution.find(u => u.role === 'Bác sĩ')?.count || 0;
-  const totalDonationsM = (dashboardData.keyMetrics.totalDonations / 1e6).toFixed(0);
+  const totalDonationsM = (dashboardData.keyMetrics.totalDonations / 1_000_000).toFixed(0);
+  const partnerCount = partnersData?.pagination?.total || 0;
+  const newPatientsCount = newPatientsData?.pagination?.total || 0;
 
+  // === TÍNH CHANGE THỰC TẾ ===
+  const prev: NonNullable<DashboardData['previousMetrics']> =
+    dashboardData.previousMetrics ?? { totalUsers: 0, doctors: 0, donations: 0, partners: 0 };
+  const calculateChange = (current: number, previous: number): string => {
+    if (previous === 0) return current > 0 ? '+100%' : '0%';
+    const change = ((current - previous) / previous) * 100;
+    return change >= 0 ? `+${change.toFixed(1)}%` : `${change.toFixed(1)}%`;
+  };
+
+  const userChange = calculateChange(dashboardData.keyMetrics.totalUsers, prev.totalUsers || 0);
+  const doctorChange = calculateChange(volunteerDoctors, prev.doctors || 0);
+  const donationChange = calculateChange(parseFloat(totalDonationsM), (prev.donations || 0) / 1_000_000);
+  const partnerChange = calculateChange(partnerCount, prev.partners || 0);
+
+  // === 3 BIẾN DỮ LIỆU THỰC TẾ ===
+  const pendingRequests = loadingPending ? [] : [
+    { type: 'Xác thực bác sĩ', count: pendingData?.doctor || 0, action: () => navigate('/doctors') },
+    { type: 'Duyệt yêu cầu hỗ trợ', count: pendingData?.support || 0, action: () => navigate('/assistance') },
+    { type: 'Xác minh bệnh nhân', count: pendingData?.patient || 0, action: () => navigate('/patients') },
+  ];
+
+  const monthlyTargets = {
+    donations: { current: parseFloat(totalDonationsM), target: loadingTargets ? 200 : (targetsData?.donations || 200) },
+    newPatients: { current: newPatientsCount, target: loadingTargets ? 500 : (targetsData?.newPatients || 500) },
+    volunteerDoctors: { current: volunteerDoctors, target: loadingTargets ? 200 : (targetsData?.doctors || 200) },
+  };
+
+  const recentActivities = loadingActivities
+    ? []
+    : (activitiesData || []).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+
+  const displayedActivities = recentActivities.slice(0, 5);
+  const hasMore = recentActivities.length > 5;
+
+  // === STATS CARDS – CHANGE THỰC TẾ ===
   const stats = [
     {
       title: 'Tổng người dùng',
-      value: dashboardData.keyMetrics.totalUsers.toLocaleString(),
-      change: '+12.5%',
+      value: dashboardData.keyMetrics.totalUsers.toLocaleString('vi-VN'),
+      change: userChange,
       icon: Users,
       color: 'text-primary',
     },
     {
       title: 'Bác sĩ tình nguyện',
-      value: volunteerDoctors,
-      change: '+8.2%',
+      value: volunteerDoctors.toLocaleString('vi-VN'),
+      change: doctorChange,
       icon: Stethoscope,
       color: 'text-secondary',
     },
     {
       title: 'Quyên góp tháng này',
       value: `${totalDonationsM}M VNĐ`,
-      change: '+15.3%',
+      change: donationChange,
       icon: Gift,
       color: 'text-success',
     },
     {
       title: 'Tổ chức từ thiện',
-      value: loadingPartners ? '...' : (partnersData?.pagination?.total || 0),
-      change: '+2',
+      value: loadingPartners ? '...' : partnerCount.toLocaleString('vi-VN'),
+      change: partnerChange,
       icon: Building2,
       color: 'text-warning',
     },
   ];
 
-  // ... phần còn lại giữ nguyên (pendingRequests, monthlyTargets, recentActivities, return JSX)
-  const pendingRequests = [
-    { type: 'Xác thực bác sĩ', count: 8, action: () => navigate('/doctors') },
-    { type: 'Duyệt yêu cầu hỗ trợ', count: 12, action: () => navigate('/assistance') },
-    { type: 'Xác minh bệnh nhân', count: 5, action: () => navigate('/patients') },
-  ];
-
-  const monthlyTargets = {
-    donations: { current: parseFloat(totalDonationsM), target: 200 },
-    newPatients: {
-      current: loadingNewPatients
-        ? 0
-        : (newPatientsData?.pagination?.total || 0),
-      target: 500
-    },
-    volunteerDoctors: { current: volunteerDoctors, target: 200 },
-  };
-
-  const recentActivities = [
-    { message: `${dashboardData.keyMetrics.totalUsers} người dùng đang hoạt động`, time: 'Vừa xong', status: 'info' },
-    { message: `Nhận ${totalDonationsM}M VNĐ quyên góp tháng này`, time: '1 giờ trước', status: 'success' },
-    { message: `12 yêu cầu hỗ trợ cần duyệt`, time: '2 giờ trước', status: 'warning' },
-    { message: 'Hệ thống ổn định', time: '1 ngày trước', status: 'success' },
-  ];
-
   return (
-    <div className="space-y-8">
-      {/* Stats */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+    <div className="space-y-8 p-4 md:p-6">
+      {/* === STAT CARDS === */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, i) => (
-          <motion.div key={stat.title} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
-            <Card className="healthcare-card">
+          <motion.div
+            key={stat.title}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.1 }}
+          >
+            <Card className="healthcare-card hover:shadow-lg transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
                 <stat.icon className={`h-4 w-4 ${stat.color}`} />
@@ -147,7 +208,10 @@ export default function AdminDashboard() {
               <CardContent>
                 <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
                 <p className="text-xs text-muted-foreground">
-                  <span className="text-success">{stat.change}</span> từ tháng trước
+                  <span className={stat.change.startsWith('+') ? 'text-success' : 'text-destructive'}>
+                    {stat.change}
+                  </span>{' '}
+                  từ tháng trước
                 </p>
               </CardContent>
             </Card>
@@ -155,10 +219,9 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* 3 cột + hoạt động */}
-      {/* ... giữ nguyên phần JSX còn lại */}
-      <div className="grid gap-8 lg:grid-cols-3">
-        {/* Cần xử lý */}
+      {/* === 3 CỘT === */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* CẦN XỬ LÝ */}
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 }}>
           <Card className="healthcare-card">
             <CardHeader>
@@ -167,49 +230,71 @@ export default function AdminDashboard() {
                 Cần xử lý
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {pendingRequests.map((r, i) => (
-                <div key={i} className="flex justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer" onClick={r.action}>
-                  <div>
-                    <div className="font-medium">{r.type}</div>
-                    <div className="text-sm text-muted-foreground">{r.count} yêu cầu</div>
+            <CardContent className="space-y-3">
+              {loadingPending ? (
+                <div className="p-6 text-center text-muted-foreground">Đang tải...</div>
+              ) : pendingRequests.every(r => r.count === 0) ? (
+                <div className="p-6 text-center text-muted-foreground">Không có yêu cầu nào</div>
+              ) : (
+                pendingRequests.map((r, i) => (
+                  <div
+                    key={i}
+                    onClick={r.action}
+                    className="flex justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                  >
+                    <div>
+                      <div className="font-medium">{r.type}</div>
+                      <div className="text-sm text-muted-foreground">{r.count} yêu cầu</div>
+                    </div>
+                    <div className="bg-destructive text-destructive-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
+                      {r.count}
+                    </div>
                   </div>
-                  <div className="bg-destructive text-destructive-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
-                    {r.count}
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </CardContent>
           </Card>
         </motion.div>
 
-        {/* Mục tiêu */}
+        {/* MỤC TIÊU */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
           <Card className="healthcare-card">
             <CardHeader><CardTitle>Mục tiêu tháng này</CardTitle></CardHeader>
             <CardContent className="space-y-6">
-              {[
-                { title: 'Quyên góp', ...monthlyTargets.donations, unit: 'M VNĐ' },
-                { title: 'Bệnh nhân mới', ...monthlyTargets.newPatients, unit: 'người' },
-                { title: 'Bác sĩ tình nguyện', ...monthlyTargets.volunteerDoctors, unit: 'người' },
-              ].map((t, i) => {
-                const progress = (t.current / t.target) * 100;
-                return (
-                  <div key={i} className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="font-medium">{t.title}</span>
-                      <span className="text-sm text-muted-foreground">{t.current}/{t.target} {t.unit}</span>
+              {loadingTargets ? (
+                <div className="space-y-6">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="space-y-2">
+                      <div className="h-4 bg-muted rounded w-3/4 animate-pulse" />
+                      <div className="h-2 bg-muted rounded animate-pulse" />
+                      <div className="h-3 bg-muted rounded w-1/4 animate-pulse" />
                     </div>
-                    <Progress value={progress} className="h-2" />
-                    <div className="text-xs text-muted-foreground">{progress.toFixed(1)}% hoàn thành</div>
-                  </div>
-                );
-              })}
+                  ))}
+                </div>
+              ) : (
+                [
+                  { title: 'Quyên góp', ...monthlyTargets.donations, unit: 'M VNĐ' },
+                  { title: 'Bệnh nhân mới', current: newPatientsCount, target: monthlyTargets.newPatients.target, unit: 'người' },
+                  { title: 'Bác sĩ tình nguyện', ...monthlyTargets.volunteerDoctors, unit: 'người' },
+                ].map((t, i) => {
+                  const progress = t.target > 0 ? (t.current / t.target) * 100 : 0;
+                  return (
+                    <div key={i} className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="font-medium">{t.title}</span>
+                        <span className="text-muted-foreground">{t.current}/{t.target} {t.unit}</span>
+                      </div>
+                      <Progress value={progress} className="h-2" />
+                      <div className="text-xs text-muted-foreground">{progress.toFixed(1)}% hoàn thành</div>
+                    </div>
+                  );
+                })
+              )}
             </CardContent>
           </Card>
         </motion.div>
 
-        {/* Quản lý */}
+        {/* QUẢN LÝ */}
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.7 }}>
           <Card className="healthcare-card">
             <CardHeader><CardTitle>Quản lý hệ thống</CardTitle></CardHeader>
@@ -231,25 +316,82 @@ export default function AdminDashboard() {
         </motion.div>
       </div>
 
-      {/* Hoạt động gần đây */}
+      {/* HOẠT ĐỘNG GẦN ĐÂY – CHỈ 5 HOẠT ĐỘNG */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }}>
         <Card className="healthcare-card">
-          <CardHeader><CardTitle>Hoạt động gần đây</CardTitle></CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Hoạt động gần đây</CardTitle>
+            {hasMore && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setOpenActivities(true)}
+                className="text-primary hover:text-primary/80"
+              >
+                Xem tất cả
+              </Button>
+            )}
+          </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {recentActivities.map((a, i) => (
-                <div key={i} className="flex items-start space-x-3 p-3 rounded-lg border">
-                  <div className={`w-2 h-2 rounded-full mt-2 ${a.status === 'success' ? 'bg-success' : a.status === 'warning' ? 'bg-warning' : 'bg-primary'}`} />
-                  <div className="flex-1">
-                    <div className="text-sm font-medium">{a.message}</div>
-                    <div className="text-xs text-muted-foreground">{a.time}</div>
+            <div className="space-y-3">
+              {loadingActivities ? (
+                <div className="p-6 text-center text-muted-foreground">Đang tải hoạt động...</div>
+              ) : displayedActivities.length === 0 ? (
+                <div className="p-6 text-center text-muted-foreground">Chưa có hoạt động</div>
+              ) : (
+                displayedActivities.map((a, i) => (
+                  <div key={i} className="flex items-start space-x-3 p-3 rounded-lg border bg-card">
+                    <div
+                      className={`w-2 h-2 rounded-full mt-2 ${a.status === 'success' ? 'bg-success' :
+                        a.status === 'warning' ? 'bg-warning' :
+                          'bg-primary'
+                        }`}
+                    />
+                    <div className="flex-1">
+                      <div className="text-sm font-medium">{a.message}</div>
+                      <div className="text-xs text-muted-foreground">{a.time}</div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* MODAL: XEM TẤT CẢ HOẠT ĐỘNG */}
+      <Dialog open={openActivities} onOpenChange={setOpenActivities}>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col p-0">
+          <DialogHeader className="px-6 py-4 border-b">
+            <DialogTitle className="text-xl">Tất cả hoạt động hệ thống</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+            {recentActivities.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                Chưa có hoạt động nào
+              </div>
+            ) : (
+              recentActivities.map((a, i) => (
+                <div
+                  key={i}
+                  className="flex items-start space-x-3 p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                >
+                  <div
+                    className={`w-2.5 h-2.5 rounded-full mt-1.5 ${a.status === 'success' ? 'bg-success' :
+                      a.status === 'warning' ? 'bg-warning' :
+                        'bg-primary'
+                      }`}
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium">{a.message}</div>
+                    <div className="text-xs text-muted-foreground mt-1">{a.time}</div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

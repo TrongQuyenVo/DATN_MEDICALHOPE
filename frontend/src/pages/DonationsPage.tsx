@@ -1,46 +1,66 @@
-import React from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// components/donations/DonationsPage.tsx
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Gift } from 'lucide-react';
+import { Gift, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuthStore } from '@/stores/authStore';
 import ScrollToTop from '@/components/layout/ScrollToTop';
 import ChatBubble from './ChatbotPage';
+import { donationsAPI } from '@/lib/api';
+import toast from 'react-hot-toast';
+
+interface Donation {
+  _id: string;
+  userId: {
+    fullName: string;
+    email: string;
+  };
+  amount: number;
+  campaignId?: {
+    title: string;
+  };
+  assistanceId?: {
+    title: string;
+  };
+  isAnonymous: boolean;
+  status: string;
+  createdAt: string;
+  note?: string;
+}
 
 export default function DonationsPage() {
   const { user } = useAuthStore();
+  const [donations, setDonations] = useState<Donation[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchDonations = async () => {
+      setLoading(true);
+      try {
+        const res = await donationsAPI.getAll({
+          limit: 10,
+          page: 1,
+          sort: '-createdAt',
+        });
+
+        console.log("Danh sách donation từ API:", res.data.data);
+
+        setDonations(res.data.data || []);
+      } catch (error: any) {
+        console.error("Lỗi khi lấy danh sách donation:", error);
+        toast.error("Không thể tải danh sách quyên góp");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDonations();
+  }, [user]);
 
   if (!user) return null;
-
-  // Danh sách các khoản quyên góp
-  const recentDonations = [
-    {
-      id: 1,
-      donor: 'Nguyễn Văn A',
-      amount: 500000,
-      campaign: 'Hỗ trợ phẫu thuật tim cho bé Mai',
-      time: '2025-10-22 15:00',
-      isAnonymous: false,
-      note: 'Chúc bé Mai sớm khỏe mạnh!',
-    },
-    {
-      id: 2,
-      donor: 'Ẩn danh',
-      amount: 1000000,
-      campaign: 'Mua thiết bị y tế cho bệnh viện',
-      time: '2025-10-22 13:00',
-      isAnonymous: true,
-      note: null, // Không hiển thị ghi chú cho ẩn danh
-    },
-    {
-      id: 3,
-      donor: 'Công ty ABC',
-      amount: 5000000,
-      campaign: 'Hỗ trợ điều trị ung thư cho chú Nam',
-      time: '2025-10-21 09:00',
-      isAnonymous: false,
-      note: 'Hỗ trợ chi phí điều trị cho chú Nam.',
-    },
-  ];
 
   return (
     <motion.div
@@ -52,49 +72,70 @@ export default function DonationsPage() {
       <Card className="healthcare-card">
         <CardHeader>
           <CardTitle className="healthcare-heading">Danh sách quyên góp</CardTitle>
-          <CardDescription>Các khoản quyên góp gần đây từ cộng đồng</CardDescription>
+          <CardDescription>
+            Các khoản quyên góp gần đây từ cộng đồng
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {recentDonations.map((donation) => (
-              <div
-                key={donation.id}
-                className="flex items-center justify-between p-3 border rounded-lg"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-success flex items-center justify-center">
-                    <Gift className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <div className="font-medium">
-                      {donation.isAnonymous ? 'Ẩn danh' : donation.donor}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {donation.campaign}
-                    </div>
-                    {!donation.isAnonymous && donation.note && (
-                      <div className="text-sm text-muted-foreground">
-                        Ghi chú: {donation.note}
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <span className="ml-2">Đang tải...</span>
+            </div>
+          ) : donations.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              Chưa có quyên góp nào.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {donations.map((donation) => {
+                const donorName = donation.isAnonymous
+                  ? 'Ẩn danh'
+                  : donation.userId?.fullName || 'Người dùng';
+
+                const campaignName = donation.assistanceId?.title || 'Quyên góp chung';
+                const note = donation.note;
+
+                return (
+                  <div
+                    key={donation._id}
+                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-success flex items-center justify-center">
+                        <Gift className="h-5 w-5 text-white" />
                       </div>
-                    )}
+                      <div>
+                        <div className="font-medium">{donorName}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {campaignName}
+                        </div>
+                        {!donation.isAnonymous && note && (
+                          <div className="text-sm text-muted-foreground mt-1">
+                            Ghi chú: {note}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-medium text-success">
+                        {donation.amount.toLocaleString('vi-VN')} VNĐ
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(donation.createdAt).toLocaleString('vi-VN', {
+                          dateStyle: 'short',
+                          timeStyle: 'short',
+                        })}
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="text-right">
-                  <div className="font-medium text-success">
-                    {donation.amount.toLocaleString('vi-VN')} VNĐ
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {new Date(donation.time).toLocaleString('vi-VN', {
-                      dateStyle: 'short',
-                      timeStyle: 'short',
-                    })}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
+
       <ScrollToTop />
       <ChatBubble />
     </motion.div>

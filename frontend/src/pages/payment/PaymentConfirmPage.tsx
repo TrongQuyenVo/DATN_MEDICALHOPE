@@ -5,6 +5,7 @@ import queryString from "query-string";
 import { ENV } from "@/config/ENV";
 import { calculateVnpSecureHash } from "@/utils/calculateVnpSecureHash";
 import { sortObject } from "@/utils/sortObject";
+import { useAppStore } from "@/stores/appStore";
 
 // Định nghĩa kiểu cho các tham số query
 interface VnpParams {
@@ -16,6 +17,7 @@ const PaymentConfirmPage: React.FC = () => {
   const queries = queryString.parse(location.search) as VnpParams;
   const vnp_HashSecret = ENV.vnp_HashSecret || "";
   const navigate = useNavigate();
+  const { paymentInfo } = useAppStore();
 
   const verifyPayment = async () => {
     const { vnp_SecureHash, ...vnp_Params } = queries;
@@ -29,6 +31,7 @@ const PaymentConfirmPage: React.FC = () => {
     if (vnp_SecureHash === signed) {
       const { vnp_TransactionStatus } = vnp_Params;
       if (vnp_TransactionStatus === "00") {
+        console.log(paymentInfo);
         navigate("/payment-success");
       } else {
         navigate("/payment-failed");
