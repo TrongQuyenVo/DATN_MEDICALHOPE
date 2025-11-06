@@ -7,9 +7,10 @@ const DonationSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    campaignId: {
+    assistanceId: {
+      // THÊM
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Campaign",
+      ref: "PatientAssistance",
     },
     amount: {
       type: Number,

@@ -53,7 +53,7 @@ interface PatientAssistance {
 interface DonationFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  assistanceId?: string; // Thay campaign bằng assistanceId
+  assistanceId?: string;
 }
 
 interface FormData {
@@ -187,10 +187,23 @@ export default function DonationForm({
   };
 
   const onSubmit = async (data: FormData) => {
-    if (!assistance) return;
+    console.log("BƯỚC 1: Form được submit", data);
+
+    if (!assistance) {
+      console.error("Không có thông tin assistance");
+      toast.error("Không có thông tin yêu cầu hỗ trợ");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
+      console.log("BƯỚC 2: Gọi API tạo donation...", {
+        assistanceId: assistance._id,
+        amount: data.amount,
+        isAnonymous,
+        paymentMethod: data.paymentMethod,
+      });
+
       // === TẠO DONATION TRƯỚC ===
       const donationRes = await donationsAPI.create({
         assistanceId: assistance._id,
@@ -203,16 +216,29 @@ export default function DonationForm({
         paymentMethod: data.paymentMethod,
       });
 
+      console.log("BƯỚC 3: Tạo donation thành công", donationRes.data);
+
       if (data.paymentMethod === "vnpay") {
         const { vnp_TmnCode, vnp_HashSecret, vnp_Url, BASE_URL } = ENV;
-        const returnUrl = `${BASE_URL}/donation-result?donationId=${donationRes.data.data._id}`;
+
+        console.log("BƯỚC 4: Kiểm tra cấu hình VNPay", {
+          vnp_TmnCode: vnp_TmnCode ? "OK" : "MISSING",
+          vnp_HashSecret: vnp_HashSecret ? "OK" : "MISSING",
+          vnp_Url: vnp_Url || "MISSING",
+          BASE_URL,
+        });
+
         if (!vnp_HashSecret || !vnp_Url || !vnp_TmnCode) {
+          console.error("Cấu hình VNPay thiếu");
           toast.error("Cấu hình VNPay chưa đầy đủ");
           return;
         }
 
-        const createDate = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, "");
-        const orderId = `DON${Date.now()}`;
+        const donationId = donationRes.data.donation._id;
+        const returnUrl = `${BASE_URL}/donation-result?donationId=${donationId}`;
+
+        const createDate = new Date().toISOString().slice(0, 19).replace(/[-T:]/g, "");
+        const orderId = `DON${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
         const paymentData: any = {
           vnp_Amount: data.amount * 100,
@@ -229,22 +255,62 @@ export default function DonationForm({
           vnp_TmnCode,
         };
 
-        const sortedParams = sortObject(paymentData)
+        console.log("BƯỚC 5: Dữ liệu gửi VNPay (trước sort)", paymentData);
+
+        const sortedParams = Object.keys(paymentData)
+          .sort((a, b) => a.localeCompare(b))
+          .filter((key) => paymentData[key] != null && paymentData[key] !== "")
           .map((key) => `${key}=${encodeURIComponent(paymentData[key])}`)
           .join("&");
 
-        const vnp_SecureHash = calculateVnpSecureHash(sortedParams, vnp_HashSecret);
-        const paymentUrl = `${vnp_Url}?${sortedParams}&vnp_SecureHash=${vnp_SecureHash}`;
+        console.log("BƯỚC 6: Params đã sort & encode", sortedParams);
 
-        window.location.href = paymentUrl;
+        const vnp_SecureHash = calculateVnpSecureHash(sortedParams, vnp_HashSecret);
+        console.log("BƯỚC 7: SecureHash", vnp_SecureHash);
+
+        const finalUrl = `${vnp_Url}?${sortedParams}&vnp_SecureHash=${vnp_SecureHash}`;
+        console.log("BƯỚC 8: URL thanh toán đầy đủ", finalUrl);
+
+        // TẠO FORM ĐỘNG
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.action = vnp_Url;
+        form.target = "_blank";
+
+        const params = new URLSearchParams(sortedParams);
+        params.append("vnp_SecureHash", vnp_SecureHash);
+
+        console.log("BƯỚC 9: Các input trong form", Object.fromEntries(params));
+
+        for (const [key, value] of params.entries()) {
+          const input = document.createElement("input");
+          input.type = "hidden";
+          input.name = key;
+          input.value = value;
+          form.appendChild(input);
+        }
+
+        document.body.appendChild(form);
+        console.log("BƯỚC 10: Form đã thêm vào DOM và submit...");
+        form.submit();
+        document.body.removeChild(form);
+
+        toast.success("Đang chuyển đến cổng thanh toán...");
+        onOpenChange(false);
       } else {
         toast.success("Quyên góp thành công!");
         onOpenChange(false);
       }
     } catch (error: any) {
+      console.error("LỖI TOÀN BỘ", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       toast.error(error.response?.data?.message || "Lỗi khi quyên góp");
     } finally {
       setIsSubmitting(false);
+      console.log("BƯỚC CUỐI: Kết thúc submit");
     }
   };
 

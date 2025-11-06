@@ -164,7 +164,7 @@ export default function ProfilePage() {
       className="space-y-6"
     >
       <div>
-        <h1 className="text-3xl font-bold">Hồ sơ cá nhân</h1>
+        <h1 className="healthcare-heading text-3xl font-bold">Hồ sơ cá nhân</h1>
         <p className="text-muted-foreground">
           {isEditing ? "Chỉnh sửa thông tin của bạn" : "Xem thông tin tài khoản"}
         </p>
@@ -184,7 +184,7 @@ export default function ProfilePage() {
                   }}
                 />
               )}
-              <AvatarFallback className="w-24 h-24 text-3xl bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+              <AvatarFallback className="w-24 h-24 text-3xl bg-gradient-primary text-white">
                 {formData.fullName
                   ? formData.fullName.split(" ").map(n => n[0]).join("").toUpperCase()
                   : <User className="h-12 w-12" />
@@ -269,9 +269,7 @@ export default function ProfilePage() {
               <div className="grid sm:grid-cols-2 gap-4 pt-6 border-t">
                 <div>
                   <p className="text-sm text-muted-foreground">Ngày sinh</p>
-                  <p className="
-
-font-medium">
+                  <p className="font-medium">
                     {formData.profile.dateOfBirth
                       ? format(new Date(formData.profile.dateOfBirth), "dd/MM/yyyy")
                       : "—"}

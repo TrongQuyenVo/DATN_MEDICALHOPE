@@ -264,15 +264,15 @@ export default function CharityAdminDashboard() {
     );
   }
 
+  const cn = (...classNames: string[]) => {
+    return classNames.filter(Boolean).join(' ');
+  };
+
   // === RENDER GIAO DIỆN ===
   return (
     <div className="space-y-6">
       {/* 1. Tiêu đề + Làm mới */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Bảng Điều Khiển Quản Trị</h1>
-          <p className="text-muted-foreground">Theo dõi hoạt động từ thiện và xử lý yêu cầu hỗ trợ</p>
-        </div>
         <Button onClick={() => window.location.reload()} variant="outline" size="sm">
           <RefreshCw className="mr-2 h-4 w-4" />
           Làm mới
@@ -331,8 +331,8 @@ export default function CharityAdminDashboard() {
           transition={{ duration: 0.5, delay: 0.4 }}
           className="lg:col-span-2"
         >
-          <Card className="healthcare-card border-l-4 border-l-destructive/20">
-            <CardHeader>
+          <Card className="healthcare-card border-l-4 border-l-destructive/20 min-h-[320px]"> {/* Tăng chiều cao */}
+            <CardHeader className="pb-3"> {/* Giảm padding trên để cân bằng */}
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="healthcare-heading flex items-center gap-2">
@@ -357,33 +357,39 @@ export default function CharityAdminDashboard() {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="space-y-3">
+
+            <CardContent className="space-y-4 pt-2 max-h-80 overflow-y-auto"> {/* Tăng space, thêm scroll nếu nhiều */}
               {loadingAssistance ? (
                 <LoadingList count={3} />
               ) : pendingAssistance.length === 0 ? (
-                <EmptyState icon={HandHeart} message="Không có yêu cầu nào đang chờ duyệt" />
+                <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
+                  <HandHeart className="h-12 w-12 mb-3 text-muted" />
+                  <p>Không có yêu cầu nào đang chờ duyệt</p>
+                </div>
               ) : (
-                pendingAssistance.map((request) => (
-                  <div
-                    key={request.id}
-                    className="group border rounded-lg p-4 hover:bg-muted/50 transition-all cursor-pointer"
-                    onClick={() => navigate(`/assistance/${request.id}`)}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1 flex-1">
-                        <p className="font-semibold text-foreground">{request.patient}</p>
-                        <p className="text-sm text-muted-foreground">{request.requestType}</p>
+                <div className="space-y-3"> {/* Tăng khoảng cách giữa các item */}
+                  {pendingAssistance.map((request) => (
+                    <div
+                      key={request.id}
+                      className="group border rounded-lg p-5 hover:bg-muted/50 transition-all cursor-pointer shadow-sm"
+                      onClick={() => navigate(`/assistance/${request.id}`)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1 flex-1">
+                          <p className="font-semibold text-foreground text-base">{request.patient}</p>
+                          <p className="text-sm text-muted-foreground">{request.requestType}</p>
+                        </div>
+                        <Badge className={cn("text-xs font-medium", getUrgencyColor(request.urgency))}>
+                          {getUrgencyLabel(request.urgency)}
+                        </Badge>
                       </div>
-                      <Badge className={getUrgencyColor(request.urgency)}>
-                        {getUrgencyLabel(request.urgency)}
-                      </Badge>
+                      <div className="flex items-center justify-between mt-4 text-sm">
+                        <span className="font-bold text-success text-lg">{request.amount}</span>
+                        <span className="text-muted-foreground">{request.submittedAt}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between mt-3 text-sm">
-                      <span className="font-bold text-success">{request.amount}</span>
-                      <span className="text-muted-foreground">{request.submittedAt}</span>
-                    </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>
