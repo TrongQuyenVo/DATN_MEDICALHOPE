@@ -110,10 +110,7 @@ const App = () => {
               <Route path="/programs" element={<ProgramsPage />} />
               <Route path="/about" element={<AboutPage />} />
               <Route path="/organizations" element={<OrganizationsPage />} />
-              <Route
-                path="/transport"
-                element={<ExtendedBusPartnerList />}
-              />
+              <Route path="/transport" element={<ExtendedBusPartnerList />} />
               <Route
                 path="/food-distribution"
                 element={<ExtendedFoodDistributionList />}
@@ -262,8 +259,19 @@ const App = () => {
                 }
               />
 
+<<<<<<< HEAD
               <Route path="/support-requests" element={<AllSupportRequests />} />
               <Route path="/assistance/:id" element={<AssistanceDetailPage />} />
+=======
+              <Route
+                path="/support-requests"
+                element={<AllSupportRequests />}
+              />
+              <Route
+                path="/assistance/:id"
+                element={<AssistanceDetailPage />}
+              />
+>>>>>>> df4ccd2eabaa9318f07f7e15ffb59435aab12338
 
 
               {/* Catch-all route */}
