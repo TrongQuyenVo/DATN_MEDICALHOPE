@@ -136,7 +136,7 @@ export default function AssistanceDetailPage() {
   const remaining = assistance.requestedAmount - assistance.raisedAmount;
   const isAdmin = ['admin'].includes(user?.role || '');
   const isCharityAdmin = user?.role === 'charity_admin';
-  const isPatient = user?._id === assistance.patientId.userId._id; // Người tạo yêu cầu
+  const isPatient = user?._id === assistance.patientId.userId._id;
 
   const getStatusConfig = () => {
     const map: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
@@ -307,39 +307,41 @@ export default function AssistanceDetailPage() {
 
             {/* CỘT PHẢI */}
             <div className="space-y-8">
-
               {/* Tài liệu */}
-              {assistance.attachments && assistance.attachments.length > 0 && (
-                <Card className="border-2 shadow-lg">
-                  <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 rounded-t-lg">
-                    <h3 className="text-xl font-bold flex items-center gap-2">
-                      <FileText className="h-6 w-6" />
-                      Tài liệu đính kèm
-                    </h3>
-                  </div>
-                  <CardContent className="p-6">
-                    <ScrollArea className="h-64">
+              <Card className="border-2 shadow-lg">
+                <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 rounded-t-lg">
+                  <h3 className="text-xl font-bold flex items-center gap-2">
+                    <FileText className="h-6 w-6" />
+                    Tài liệu đính kèm
+                  </h3>
+                </div>
+                <CardContent className="p-6">
+                  <ScrollArea className="h-64">
+                    {assistance.attachments?.length > 0 ? (
                       <div className="space-y-3">
                         {assistance.attachments.map((file, i) => (
                           <div
                             key={i}
-                            className="flex items-center justify-between p-3 bg-muted rounded-lg hover:bg-muted/80 transition"
+                            className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
                           >
-                            <div className="flex items-center gap-3 flex-1 min-w-0">
-                              <FileText className="h-5 w-5 text-primary flex-shrink-0" />
-                              <div className="min-w-0">
-                                <p className="font-medium truncate">{file.filename}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {(file.size / 1024 / 1024).toFixed(2)} MB
-                                </p>
-                              </div>
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <FileText className="h-4 w-4 text-primary flex-shrink-0" />
+                              <span className="text-sm font-medium truncate" title={file.filename}>
+                                {file.filename || `File ${i + 1}`}
+                              </span>
+                              {file.size && (
+                                <span className="text-xs text-muted-foreground">
+                                  ({(file.size / 1024).toFixed(1)} KB)
+                                </span>
+                              )}
                             </div>
                             <a
                               href={`${API_SERVER}${file.path}`}
-                              download
+                              download={file.filename}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="ml-2 text-primary hover:text-primary/80 flex items-center gap-1 text-sm font-medium"
+                              className="text-primary hover:text-primary/80 flex items-center gap-1 text-sm"
+                              onClick={() => console.log('Tải:', `${API_SERVER}${file.path}`)}
                             >
                               <Download className="h-4 w-4" />
                               Tải
@@ -347,10 +349,14 @@ export default function AssistanceDetailPage() {
                           </div>
                         ))}
                       </div>
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
-              )}
+                    ) : (
+                      <p className="text-center text-muted-foreground text-sm py-8">
+                        Không có tài liệu đính kèm
+                      </p>
+                    )}
+                  </ScrollArea>
+                </CardContent>
+              </Card>
 
               {/* Hành động */}
               <Card className="border-2 shadow-lg">
@@ -444,7 +450,7 @@ export default function AssistanceDetailPage() {
       )}
 
       <ScrollToTop />
-      <ChatBubble />
+      {!isAdmin && <ChatBubble />}
 
       {/* FOOTER khi chưa đăng nhập */}
       {!user && <Footer />}

@@ -26,15 +26,21 @@ exports.createAssistanceRequest = async (req, res) => {
       urgency: req.body.urgency, // THÊM URGENCY
       contactPhone: req.body.contactPhone, // THÊM PHONE
       medicalCondition: req.body.medicalCondition, // THÊM CONDITION
+      attachments: req.files
+        ? req.files.map((file) => ({
+            originalName: file.originalname,
+            filePath: file.path.replace(/\\/g, "/"),
+            mimeType: file.mimetype,
+          }))
+        : [],
       status: "pending",
     };
 
     const assistance = await PatientAssistance.create(assistanceData);
 
     // 📎 XỬ LÝ FILES (NẾU CÓ)
-    if (req.files && req.files.attachments) {
-      // TODO: Lưu files vào cloud (Cloudinary/AWS) và update assistance
-      console.log("Files uploaded:", req.files.attachments);
+    if (req.files && req.files.length > 0) {
+      console.log("Files uploaded:", req.files);
     }
 
     // 👤 POPULATE DATA

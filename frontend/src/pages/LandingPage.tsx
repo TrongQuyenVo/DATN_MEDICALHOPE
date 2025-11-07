@@ -907,7 +907,21 @@ export default function LandingPage() {
                                 </Badge>
                               </div>
 
-                              <p className="text-sm text-primary font-semibold mb-2">{request.medicalCondition}</p>
+                              <p
+                                className="text-sm text-primary font-semibold mb-2"
+                                style={{
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  lineHeight: '1.4',
+                                  maxHeight: '2.8em', // 2 dòng × line-height
+                                  whiteSpace: 'normal',
+                                }}
+                              >
+                                {request.medicalCondition}
+                              </p>
                               <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{request.description}</p>
 
                               <div className="mb-4">

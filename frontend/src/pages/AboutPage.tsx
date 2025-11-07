@@ -52,24 +52,6 @@ export default function AboutPage() {
     }
   ];
 
-  const teamHighlights = [
-    {
-      role: 'Bác sĩ tình nguyện',
-      count: '1,500+',
-      description: 'Đội ngũ bác sĩ chuyên môn cao, luôn sẵn sàng giúp đỡ với trái tim nhân ái.'
-    },
-    {
-      role: 'Tình nguyện viên',
-      count: '5,000+',
-      description: 'Những con người nhiệt huyết, lan tỏa yêu thương đến mọi miền đất nước.'
-    },
-    {
-      role: 'Đối tác tổ chức',
-      count: '120+',
-      description: 'Mạng lưới rộng lớn các tổ chức từ thiện uy tín, cùng chung tay vì cộng đồng.'
-    }
-  ];
-
   const coreValues = [
     {
       icon: HeartHandshake,
@@ -172,51 +154,6 @@ export default function AboutPage() {
                 <div className="absolute left-1/2 transform -translate-x-1/2 bg-primary/10 rounded-full p-2">
                   <Award className="h-4 w-4 text-primary" />
                 </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Team Section */}
-      <section className="py-20 bg-gradient-to-br from-primary/5 via-background to-secondary/5">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="max-w-3xl mx-auto text-center mb-16"
-          >
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/10 px-6 py-2">
-              <Users className="h-5 w-5 text-primary" />
-              <span className="text-sm font-medium text-primary">Đội ngũ của chúng tôi</span>
-            </div>
-            <h2 className="healthcare-heading text-4xl font-bold mb-4">Những Con Người Tận Tâm</h2>
-            <p className="text-xl text-muted-foreground">
-              Đội ngũ chúng tôi là những trái tim nhân ái, luôn sẵn sàng vì một Việt Nam khỏe mạnh hơn.
-            </p>
-          </motion.div>
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {teamHighlights.map((highlight, index) => (
-              <motion.div
-                key={highlight.role}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <Card className="healthcare-card text-center h-full">
-                  <CardContent className="pt-8">
-                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-primary shadow-lg">
-                      <Users className="h-7 w-7 text-white" />
-                    </div>
-                    <div className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                      {highlight.count}
-                    </div>
-                    <h3 className="font-bold text-lg mb-2">{highlight.role}</h3>
-                    <p className="text-sm text-muted-foreground">{highlight.description}</p>
-                  </CardContent>
-                </Card>
               </motion.div>
             ))}
           </div>

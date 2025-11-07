@@ -29,9 +29,9 @@ const upload = multer({
 
 router.post(
   "/",
+  upload.array("attachments", 5), // Tối đa 5 files
   auth,
   authorize("patient"),
-  upload.array("attachments", 5), // Tối đa 5 files
   assistanceController.createAssistanceRequest
 );
 
