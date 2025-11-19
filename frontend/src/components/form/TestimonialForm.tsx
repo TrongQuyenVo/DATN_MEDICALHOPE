@@ -1,86 +1,45 @@
+// components/form/AnonymousTestimonialForm.tsx
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Send } from 'lucide-react';
+import { Send, Heart } from 'lucide-react';
 
-interface TestimonialFormData {
-  name: string;
-  age: string;
-  location: string;
-  treatment: string;
-  content: string;
-}
-
-interface TestimonialFormProps {
-  formData: TestimonialFormData;
+interface Props {
+  formData: { treatment: string; content: string };
   error: string | null;
   onInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onSubmit: () => void;
   onReset: () => void;
 }
 
-export default function TestimonialForm({
+export default function AnonymousTestimonialForm({
   formData,
   error,
   onInputChange,
   onSubmit,
   onReset,
-}: TestimonialFormProps) {
+}: Props) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">
+        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg text-sm">
           {error}
         </div>
       )}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="name">Họ và tên *</Label>
-          <Input
-            id="name"
-            name="name"
-            value={formData.name}
-            onChange={onInputChange}
-            placeholder="VD: Nguyễn Văn A"
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="age">Tuổi *</Label>
-          <Input
-            id="age"
-            name="age"
-            type="text"
-            value={formData.age}
-            onChange={onInputChange}
-            placeholder="VD: 45 tuổi"
-            required
-          />
-        </div>
-      </div>
+
       <div>
-        <Label htmlFor="location">Địa điểm *</Label>
-        <Input
-          id="location"
-          name="location"
-          value={formData.location}
-          onChange={onInputChange}
-          placeholder="VD: Hà Nội"
-          required
-        />
-      </div>
-      <div>
-        <Label htmlFor="treatment">Chương trình được khám miễn phí *</Label>
+        <Label htmlFor="treatment">Bạn đã được hỗ trợ chương trình nào? *</Label>
         <Input
           id="treatment"
           name="treatment"
           value={formData.treatment}
           onChange={onInputChange}
-          placeholder="VD: Khám tim miễn phí"
-          required
+          placeholder="VD: Khám tim mạch miễn phí, Tặng kính cho trẻ em..."
+          className="mt-2"
         />
       </div>
+
       <div>
         <Label htmlFor="content">Câu chuyện của bạn *</Label>
         <Textarea
@@ -88,18 +47,19 @@ export default function TestimonialForm({
           name="content"
           value={formData.content}
           onChange={onInputChange}
-          placeholder="Chia sẻ trải nghiệm của bạn..."
-          rows={5}
-          required
+          placeholder="Hãy chia sẻ cảm xúc, trải nghiệm của bạn khi nhận được sự giúp đỡ... (Hoàn toàn ẩn danh)"
+          rows={6}
+          className="mt-2 resize-none"
         />
       </div>
-      <div className="flex justify-end gap-4">
-        <Button variant="outline" onClick={onReset}>
-          Xóa
+
+      <div className="flex justify-end gap-3 pt-4">
+        <Button type="button" variant="outline" onClick={onReset}>
+          Xóa hết
         </Button>
-        <Button className="btn-healthcare" onClick={onSubmit}>
+        <Button onClick={onSubmit} className="bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600">
           <Send className="h-4 w-4 mr-2" />
-          Gửi câu chuyện
+          Gửi lời cảm ơn
         </Button>
       </div>
     </div>

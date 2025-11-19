@@ -2,11 +2,10 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Building2, Plus, Edit, Trash2, ExternalLink,
+  Building2, Plus, Edit, Trash2,
   Phone, MapPin, Clock, Users, Image as ImageIcon, Globe, Bus, Mail,
   ChevronLeft, ChevronRight
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -17,16 +16,16 @@ import { useAuthStore } from '@/stores/authStore';
 import { partnersAPI } from '@/lib/api';
 import ScrollToTop from '@/components/layout/ScrollToTop';
 import ChatBubble from './ChatbotPage';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface Partner {
   _id: string;
   name: string;
-  type: 'hospital' | 'charity' | 'international_organization' | 'association' | 'transportation' | 'food_distribution';
+  type: 'transportation' | 'food_distribution' | 'organization';
   category: string;
   website?: string;
   logo?: string;
   details?: {
-    title?: string;
     phone?: string;
     description?: string;
     location?: string;
@@ -66,7 +65,6 @@ export function PartnerManagement() {
     website: '',
     logo: null as File | null,
     details: {
-      title: '',
       phone: '',
       description: '',
       location: '',
@@ -130,31 +128,44 @@ export function PartnerManagement() {
     setLoading(true);
     try {
       const data = new FormData();
+
+      // Các field chính
       data.append('name', formData.name);
       data.append('type', formData.type);
       data.append('category', formData.category);
-      data.append('website', formData.website);
-      if (formData.logo) data.append('logo', formData.logo);
-      data.append('details', JSON.stringify({
-        ...formData.details,
-        activities: formData.details.activities?.length ? formData.details.activities : undefined,
-      }));
+      if (formData.website) data.append('website', formData.website);
+      if (formData.logo instanceof File) data.append('logo', formData.logo);
       data.append('isActive', formData.isActive.toString());
+
+      // Gửi từng field details riêng biệt
+      const d = formData.details;
+      if (d.phone) data.append('phone', d.phone);
+      if (d.description) data.append('description', d.description);
+      if (d.location) data.append('location', d.location);
+      if (d.schedule) data.append('schedule', d.schedule);
+      if (d.organizer) data.append('organizer', d.organizer);
+      if (d.departure) data.append('departure', d.departure);
+      if (d.destination) data.append('destination', d.destination);
+      if (d.email) data.append('email', d.email);
+      if (d.activities && d.activities.length > 0) {
+        data.append('activities', d.activities.join(','));
+      }
 
       let updatedPartner;
       if (editingPartner) {
         const res = await partnersAPI.update(editingPartner._id, data);
         updatedPartner = res.data.partner;
-        setPartners(partners.map(p => p._id === editingPartner._id ? updatedPartner : p));
+        setPartners(prev => prev.map(p => p._id === editingPartner._id ? updatedPartner : p));
       } else {
         const res = await partnersAPI.create(data);
         updatedPartner = res.data.partner;
-        setPartners([updatedPartner, ...partners]);
+        setPartners(prev => [updatedPartner, ...prev]);
       }
 
       closeForm();
-      fetchPartners(); // Tải lại danh sách
+      fetchPartners();
     } catch (err: any) {
+      console.error(err);
       setError(err.response?.data?.message || 'Lưu đối tác thất bại');
     } finally {
       setLoading(false);
@@ -170,7 +181,6 @@ export function PartnerManagement() {
       website: partner.website || '',
       logo: null,
       details: {
-        title: partner.details?.title || '',
         phone: partner.details?.phone || '',
         description: partner.details?.description || '',
         location: partner.details?.location || '',
@@ -191,7 +201,7 @@ export function PartnerManagement() {
     try {
       await partnersAPI.delete(id);
       setPartners(partners.filter(p => p._id !== id));
-      fetchPartners(); // Cập nhật phân trang
+      fetchPartners();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Xóa thất bại');
     }
@@ -211,7 +221,6 @@ export function PartnerManagement() {
       website: '',
       logo: null,
       details: {
-        title: '',
         phone: '',
         description: '',
         location: '',
@@ -229,14 +238,7 @@ export function PartnerManagement() {
 
   const handleActivitiesChange = (value: string) => {
     const activities = value.split(',').map(item => item.trim()).filter(item => item);
-    setFormData({
-      ...formData,
-      details: { ...formData.details, activities }
-    });
-  };
-
-  const handlePageChange = (newPage: number) => {
-    setPagination(prev => ({ ...prev, page: newPage }));
+    setFormData({ ...formData, details: { ...formData.details, activities } });
   };
 
   // Kiểm tra quyền
@@ -247,6 +249,168 @@ export function PartnerManagement() {
       </div>
     );
   }
+
+  const renderPartnerTable = (filteredPartners: Partner[], emptyMessage: string) => {
+    if (loading && filteredPartners.length === 0) {
+      return <div className="p-8 text-center text-muted-foreground">Đang tải dữ liệu...</div>;
+    }
+
+    if (filteredPartners.length === 0) {
+      return <div className="p-8 text-center text-muted-foreground">{emptyMessage}</div>;
+    }
+
+    return (
+      <div className="bg-card rounded-xl shadow-sm border overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full table-auto">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="px-6 py-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Logo</th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Tên</th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Thông tin</th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Trạng thái</th>
+                <th className="px-6 py-4 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Hành động</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {filteredPartners.map((partner) => {
+                const logoUrl = partner.logo
+                  ? (partner.logo.startsWith('http') ? partner.logo : `${API_SERVER}${partner.logo}`)
+                  : null;
+
+                return (
+                  <tr key={partner._id} className="hover:bg-muted/50 transition-colors">
+                    <td className="px-6 py-4 w-[50px]">
+                      {logoUrl ? (
+                        <img
+                          src={logoUrl}
+                          alt={partner.name}
+                          className="h-10 w-10 rounded-full object-contain bg-white p-1 shadow-sm"
+                          onError={(e) => {
+                            e.currentTarget.src = '/default-logo.png';
+                          }}
+                        />
+                      ) : (
+                        <div className="h-10 w-10 rounded-full bg-gray-200 border-2 border-dashed flex items-center justify-center">
+                          <ImageIcon className="h-5 w-5 text-gray-400" />
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 font-medium">{partner.name}</td>
+                    <td className="px-6 py-4 text-sm max-w-md">
+                      {/* Nhà xe */}
+                      {partner.type === 'transportation' && (
+                        <div className="space-y-1 text-muted-foreground">
+                          {partner.details?.departure && partner.details?.destination && (
+                            <div className="flex items-center gap-1 text-xs">
+                              <MapPin className="h-3 w-3" />
+                              {partner.details.departure} → {partner.details.destination}
+                            </div>
+                          )}
+                          {partner.details?.phone && (
+                            <div className="flex items-center gap-1 text-xs">
+                              <Phone className="h-3 w-3" /> {partner.details.phone}
+                            </div>
+                          )}
+                          {partner.details?.schedule && (
+                            <div className="flex items-center gap-1 text-xs">
+                              <Clock className="h-3 w-3" /> {partner.details.schedule}
+                            </div>
+                          )}
+                          {partner.details?.description && (
+                            <p className="text-xs line-clamp-2 mt-1">{partner.details.description}</p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Phát đồ ăn */}
+                      {partner.type === 'food_distribution' && (
+                        <div className="space-y-1 text-muted-foreground">
+                          {partner.details?.location && (
+                            <div className="flex items-center gap-1 text-xs">
+                              <MapPin className="h-3 w-3" /> {partner.details.location}
+                            </div>
+                          )}
+                          {partner.details?.schedule && (
+                            <div className="flex items-center gap-1 text-xs">
+                              <Clock className="h-3 w-3" /> {partner.details.schedule}
+                            </div>
+                          )}
+                          {partner.details?.organizer && (
+                            <div className="flex items-center gap-1 text-xs">
+                              <Users className="h-3 w-3" /> {partner.details.organizer}
+                            </div>
+                          )}
+                          {partner.details?.description && (
+                            <p className="text-xs line-clamp-2 mt-1">{partner.details.description}</p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Tổ chức */}
+                      {partner.type === 'organization' && (
+                        <div className="space-y-1 text-muted-foreground">
+                          {partner.website && (
+                            <div className="mb-1">
+                              <a
+                                href={partner.website}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline text-xs flex items-center gap-1 font-medium"
+                              >
+                                <Globe className="h-3 w-3" /> Website
+                              </a>
+                            </div>
+                          )}
+                          {partner.details?.location && (
+                            <div className="flex items-center gap-1 text-xs">
+                              <MapPin className="h-3 w-3" /> {partner.details.location}
+                            </div>
+                          )}
+                          {partner.details?.phone && (
+                            <div className="flex items-center gap-1 text-xs">
+                              <Phone className="h-3 w-3" /> {partner.details.phone}
+                            </div>
+                          )}
+                          {partner.details?.email && (
+                            <div className="flex items-center gap-1 text-xs">
+                              <Mail className="h-3 w-3" /> {partner.details.email}
+                            </div>
+                          )}
+                          {partner.details?.activities?.length > 0 && (
+                            <div className="flex items-center gap-1 text-xs">
+                              <Users className="h-3 w-3" />
+                              <span className="line-clamp-1">{partner.details.activities.join(', ')}</span>
+                            </div>
+                          )}
+                          {partner.details?.description && (
+                            <p className="text-xs line-clamp-2 mt-1">{partner.details.description}</p>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <Badge variant={partner.isActive ? 'default' : 'secondary'}>
+                        {partner.isActive ? 'Hoạt động' : 'Tạm dừng'}
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-4 text-right space-x-2">
+                      <Button size="sm" variant="ghost" onClick={() => handleEditPartner(partner)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => handleDeletePartner(partner._id)}>
+                        <Trash2 className="h-4 w-4 text-red-600" />
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <motion.div
@@ -261,7 +425,7 @@ export function PartnerManagement() {
           <h1 className="text-3xl font-bold healthcare-heading flex items-center gap-2">
             Quản lý đối tác
           </h1>
-          <p className="text-muted-foreground mt-1">Quản lý bệnh viện, nhà xe, điểm phát đồ ăn, tổ chức từ thiện...</p>
+          <p className="text-muted-foreground mt-1">Quản lý nhà xe, điểm phát đồ ăn và tổ chức hỗ trợ</p>
         </div>
         <Button onClick={() => { setIsFormOpen(true); resetForm(); }}>
           <Plus className="h-4 w-4 mr-2" /> Thêm đối tác
@@ -283,7 +447,7 @@ export function PartnerManagement() {
               {editingPartner ? 'Chỉnh sửa đối tác' : 'Thêm đối tác mới'}
             </DialogTitle>
             <DialogDescription>
-              Điền thông tin chi tiết. Logo và website là tùy chọn.
+              Điền thông tin chi tiết. Logo là tùy chọn.
             </DialogDescription>
           </DialogHeader>
 
@@ -296,7 +460,7 @@ export function PartnerManagement() {
                   id="name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="VD: Bệnh viện Bạch Mai"
+                  placeholder="VD: Nhà xe Minh Tâm"
                 />
               </div>
               <div>
@@ -306,12 +470,9 @@ export function PartnerManagement() {
                     <SelectValue placeholder="Chọn loại" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="hospital">Bệnh viện</SelectItem>
-                    <SelectItem value="charity">Tổ chức từ thiện</SelectItem>
-                    <SelectItem value="international_organization">Tổ chức quốc tế</SelectItem>
-                    <SelectItem value="association">Hiệp hội</SelectItem>
-                    <SelectItem value="transportation">Nhà xe (Vận chuyển)</SelectItem>
+                    <SelectItem value="transportation">Nhà xe</SelectItem>
                     <SelectItem value="food_distribution">Điểm phát đồ ăn</SelectItem>
+                    <SelectItem value="organization">Tổ chức</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -325,18 +486,21 @@ export function PartnerManagement() {
                   id="category"
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  placeholder="VD: Bệnh viện, Nhà xe liên tỉnh..."
+                  placeholder="VD: Vận chuyển liên tỉnh, Cơm từ thiện..."
                 />
               </div>
-              <div>
-                <Label htmlFor="website">Website (tùy chọn)</Label>
-                <Input
-                  id="website"
-                  value={formData.website}
-                  onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-                  placeholder="https://nhaxeabc.com"
-                />
-              </div>
+
+              {formData.type === 'organization' && (
+                <div>
+                  <Label htmlFor="website">Website (tùy chọn)</Label>
+                  <Input
+                    id="website"
+                    value={formData.website}
+                    onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                    placeholder="https://example.org"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Logo Upload */}
@@ -359,7 +523,7 @@ export function PartnerManagement() {
               </div>
             </div>
 
-            {/* Conditional Fields - Nhà xe */}
+            {/* Nhà xe */}
             {formData.type === 'transportation' && (
               <div className="space-y-4 border-t pt-4">
                 <h4 className="font-medium text-primary flex items-center gap-2">
@@ -367,73 +531,47 @@ export function PartnerManagement() {
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label>Điểm xuất phát *</Label>
+                    <Label>Địa điểm</Label>
                     <Input
-                      value={formData.details.departure}
+                      value={formData.details.location || ''}
                       onChange={(e) => setFormData({
                         ...formData,
-                        details: { ...formData.details, departure: e.target.value }
+                        details: { ...formData.details, location: e.target.value }
                       })}
-                      placeholder="VD: Hà Nội"
-                      required
+                      placeholder="VD: Bến xe Mỹ Đình, Hà Nội"
                     />
                   </div>
                   <div>
-                    <Label>Điểm đến *</Label>
+                    <Label>SĐT</Label>
                     <Input
-                      value={formData.details.destination}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        details: { ...formData.details, destination: e.target.value }
-                      })}
-                      placeholder="VD: TP.HCM, Đà Nẵng"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label>SĐT liên hệ *</Label>
-                    <Input
-                      value={formData.details.phone}
+                      value={formData.details.phone || ''}
                       onChange={(e) => setFormData({
                         ...formData,
                         details: { ...formData.details, phone: e.target.value }
                       })}
-                      placeholder="0901234567"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label>Khung giờ xe chạy *</Label>
-                    <Input
-                      value={formData.details.schedule}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        details: { ...formData.details, schedule: e.target.value }
-                      })}
-                      placeholder="VD: 5h, 7h, 9h, 13h, 17h"
-                      required
+                      placeholder="VD: 0987 654 321"
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <Label>Mô tả dịch vụ</Label>
+                    <Label>Mô tả</Label>
                     <Input
-                      value={formData.details.description}
+                      value={formData.details.description || ''}
                       onChange={(e) => setFormData({
                         ...formData,
                         details: { ...formData.details, description: e.target.value }
                       })}
-                      placeholder="Hỗ trợ vé miễn phí cho bệnh nhân nghèo..."
+                      placeholder="Hỗ trợ vé xe miễn phí cho bệnh nhân nghèo..."
                     />
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Conditional Fields - Điểm phát đồ ăn */}
+            {/* Phát đồ ăn */}
             {formData.type === 'food_distribution' && (
               <div className="space-y-4 border-t pt-4">
                 <h4 className="font-medium text-primary flex items-center gap-2">
-                  <MapPin className="h-5 w-5" /> Thông tin điểm phát đồ ăn
+                  <Users className="h-5 w-5" /> Điểm phát đồ ăn
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -441,7 +579,7 @@ export function PartnerManagement() {
                     <Input
                       value={formData.details.location}
                       onChange={(e) => setFormData({ ...formData, details: { ...formData.details, location: e.target.value } })}
-                      placeholder="Số 123, Đường ABC, Quận 1"
+                      placeholder="123 Đường ABC, Quận 1"
                     />
                   </div>
                   <div>
@@ -461,19 +599,26 @@ export function PartnerManagement() {
                     />
                   </div>
                   <div>
+                    <Label>SĐT</Label>
+                    <Input
+                      value={formData.details.phone}
+                      onChange={(e) => setFormData({ ...formData, details: { ...formData.details, phone: e.target.value } })}
+                    />
+                  </div>
+                  <div className="md:col-span-2">
                     <Label>Mô tả</Label>
                     <Input
                       value={formData.details.description}
                       onChange={(e) => setFormData({ ...formData, details: { ...formData.details, description: e.target.value } })}
-                      placeholder="Phát cơm từ thiện..."
+                      placeholder="Phát cơm từ thiện miễn phí..."
                     />
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Conditional Fields - Hospital, Charity, etc. */}
-            {['hospital', 'charity', 'international_organization', 'association'].includes(formData.type) && (
+            {/* Tổ chức */}
+            {formData.type === 'organization' && (
               <div className="space-y-4 border-t pt-4">
                 <h4 className="font-medium text-primary flex items-center gap-2">
                   <Building2 className="h-5 w-5" /> Thông tin tổ chức
@@ -484,7 +629,7 @@ export function PartnerManagement() {
                     <Input
                       value={formData.details.location}
                       onChange={(e) => setFormData({ ...formData, details: { ...formData.details, location: e.target.value } })}
-                      placeholder="VD: Hà Nội, Việt Nam"
+                      placeholder="Hà Nội, Việt Nam"
                     />
                   </div>
                   <div>
@@ -492,7 +637,7 @@ export function PartnerManagement() {
                     <Input
                       value={formData.details.phone}
                       onChange={(e) => setFormData({ ...formData, details: { ...formData.details, phone: e.target.value } })}
-                      placeholder="VD: 024-3942-2030"
+                      placeholder="024-3942-2030"
                     />
                   </div>
                   <div>
@@ -500,7 +645,7 @@ export function PartnerManagement() {
                     <Input
                       value={formData.details.email}
                       onChange={(e) => setFormData({ ...formData, details: { ...formData.details, email: e.target.value } })}
-                      placeholder="VD: info@organization.org"
+                      placeholder="info@org.org"
                     />
                   </div>
                   <div>
@@ -508,7 +653,7 @@ export function PartnerManagement() {
                     <Input
                       value={formData.details.activities?.join(', ')}
                       onChange={(e) => handleActivitiesChange(e.target.value)}
-                      placeholder="VD: Cứu trợ khẩn cấp, Y tế cộng đồng"
+                      placeholder="Y tế, giáo dục, cứu trợ"
                     />
                   </div>
                   <div className="md:col-span-2">
@@ -516,7 +661,7 @@ export function PartnerManagement() {
                     <Input
                       value={formData.details.description}
                       onChange={(e) => setFormData({ ...formData, details: { ...formData.details, description: e.target.value } })}
-                      placeholder="VD: Hỗ trợ y tế cho người nghèo..."
+                      placeholder="Hỗ trợ y tế cho người nghèo..."
                     />
                   </div>
                 </div>
@@ -535,201 +680,41 @@ export function PartnerManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* Table */}
-      <div className="bg-card rounded-xl shadow-sm border overflow-hidden">
-        {loading && partners.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground">Đang tải dữ liệu...</div>
-        ) : partners.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground">Chưa có đối tác nào. Hãy thêm mới!</div>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="w-full table-auto">
-                <thead className="bg-muted/50">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Logo</th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Tên</th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Loại</th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Thông tin</th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Trạng thái</th>
-                    <th className="px-6 py-4 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Hành động</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {partners.map((partner) => {
-                    const logoUrl = partner.logo
-                      ? (partner.logo.startsWith('http') ? partner.logo : `${API_SERVER}${partner.logo}`)
-                      : null;
+      {/* Tabs */}
+      <Tabs defaultValue="transportation" className="w-full">
+        <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsTrigger value="transportation" className="flex items-center gap-2">
+            <Bus className="h-4 w-4" /> Nhà xe
+            <Badge variant="secondary" className="ml-1">
+              {partners.filter(p => p.type === 'transportation').length}
+            </Badge>
+          </TabsTrigger>
+          <TabsTrigger value="food_distribution" className="flex items-center gap-2">
+            <Users className="h-4 w-4" /> Phát đồ ăn
+            <Badge variant="secondary" className="ml-1">
+              {partners.filter(p => p.type === 'food_distribution').length}
+            </Badge>
+          </TabsTrigger>
+          <TabsTrigger value="organization" className="flex items-center gap-2">
+            <Building2 className="h-4 w-4" /> Tổ chức
+            <Badge variant="secondary" className="ml-1">
+              {partners.filter(p => p.type === 'organization').length}
+            </Badge>
+          </TabsTrigger>
+        </TabsList>
 
-                    return (
-                      <tr key={partner._id} className="hover:bg-muted/50 transition-colors">
-                        <td className="px-6 py-4 w-[50px]">
-                          {logoUrl ? (
-                            <img
-                              src={logoUrl}
-                              alt={partner.name}
-                              className="h-10 w-10 rounded-full object-contain bg-white p-1 shadow-sm"
-                              onError={(e) => {
-                                e.currentTarget.src = '/default-logo.png';
-                              }}
-                            />
-                          ) : (
-                            <div className="h-10 w-10 rounded-full bg-gray-200 border-2 border-dashed flex items-center justify-center">
-                              <ImageIcon className="h-5 w-5 text-gray-400" />
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-1 py-4 font-medium w-[100px]">{partner.name}</td>
-                        <td className="px-3 py-4 w-[80px]">
-                          <Badge variant="secondary">
-                            {partner.type === 'hospital' && 'Bệnh viện'}
-                            {partner.type === 'charity' && 'Từ thiện'}
-                            {partner.type === 'international_organization' && 'Quốc tế'}
-                            {partner.type === 'association' && 'Hiệp hội'}
-                            {partner.type === 'transportation' && 'Nhà xe'}
-                            {partner.type === 'food_distribution' && 'Phát đồ ăn'}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4 text-sm w-[230px]">
-                          {partner.website && (
-                            <div className="mb-2">
-                              <a
-                                href={partner.website}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:underline text-xs flex items-center gap-1 font-medium"
-                              >
-                                <Globe className="h-3 w-3" />
-                                Xem website
-                              </a>
-                            </div>
-                          )}
-                          {partner.type === 'transportation' && (
-                            <div className="space-y-1 text-muted-foreground">
-                              {partner.details?.departure && partner.details?.destination && (
-                                <div className="flex items-center gap-1 text-xs">
-                                  <MapPin className="h-3 w-3" />
-                                  {partner.details.departure} to {partner.details.destination}
-                                </div>
-                              )}
-                              {partner.details?.phone && (
-                                <div className="flex items-center gap-1 text-xs">
-                                  <Phone className="h-3 w-3" /> {partner.details.phone}
-                                </div>
-                              )}
-                              {partner.details?.schedule && (
-                                <div className="flex items-center gap-1 text-xs">
-                                  <Clock className="h-3 w-3" /> {partner.details.schedule}
-                                </div>
-                              )}
-                              {partner.details?.description && (
-                                <p className="text-xs line-clamp-2">{partner.details.description}</p>
-                              )}
-                            </div>
-                          )}
-                          {partner.type === 'food_distribution' && (
-                            <div className="space-y-1 text-muted-foreground">
-                              {partner.details?.location && (
-                                <div className="flex items-center gap-1 text-xs">
-                                  <MapPin className="h-3 w-3" /> {partner.details.location}
-                                </div>
-                              )}
-                              {partner.details?.schedule && (
-                                <div className="flex items-center gap-1 text-xs">
-                                  <Clock className="h-3 w-3" /> {partner.details.schedule}
-                                </div>
-                              )}
-                              {partner.details?.organizer && (
-                                <div className="flex items-center gap-1 text-xs">
-                                  <Users className="h-3 w-3" /> {partner.details.organizer}
-                                </div>
-                              )}
-                              {partner.details?.description && (
-                                <p className="text-xs line-clamp-2 mt-1">{partner.details.description}</p>
-                              )}
-                            </div>
-                          )}
-                          {['hospital', 'charity', 'international_organization', 'association'].includes(partner.type) && (
-                            <div className="space-y-1 text-muted-foreground">
-                              {partner.details?.location && (
-                                <div className="flex items-center gap-1 text-xs">
-                                  <MapPin className="h-3 w-3" /> {partner.details.location}
-                                </div>
-                              )}
-                              {partner.details?.phone && (
-                                <div className="flex items-center gap-1 text-xs">
-                                  <Phone className="h-3 w-3" /> {partner.details.phone}
-                                </div>
-                              )}
-                              {partner.details?.email && (
-                                <div className="flex items-center gap-1 text-xs">
-                                  <Mail className="h-3 w-3" /> {partner.details.email}
-                                </div>
-                              )}
-                              {partner.details?.activities?.length && (
-                                <div className="flex items-center gap-1 text-xs">
-                                  <Users className="h-3 w-3" />
-                                  <span className="line-clamp-1">{partner.details.activities.join(', ')}</span>
-                                </div>
-                              )}
-                              {partner.details?.description && (
-                                <p className="text-xs line-clamp-2 mt-1">{partner.details.description}</p>
-                              )}
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 w-[100px]">
-                          <Badge variant={partner.isActive ? 'default' : 'secondary'}>
-                            {partner.isActive ? 'Hoạt động' : 'Tạm dừng'}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4 text-right space-x-2 w-[100px]">
-                          <Button size="sm" variant="ghost" onClick={() => handleEditPartner(partner)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button size="sm" variant="ghost" onClick={() => handleDeletePartner(partner._id)}>
-                            <Trash2 className="h-4 w-4 text-red-600" />
-                          </Button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+        <TabsContent value="transportation">
+          {renderPartnerTable(partners.filter(p => p.type === 'transportation'), 'Chưa có nhà xe nào')}
+        </TabsContent>
 
-            {/* Pagination */}
-            {pagination.totalPages > 1 && (
-              <div className="flex items-center justify-between px-6 py-4 border-t">
-                <p className="text-sm text-muted-foreground">
-                  Hiển thị {(pagination.page - 1) * pagination.limit + 1} - {Math.min(pagination.page * pagination.limit, pagination.total)} trong {pagination.total} đối tác
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={pagination.page === 1}
-                    onClick={() => handlePageChange(pagination.page - 1)}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="text-sm">
-                    Trang {pagination.page} / {pagination.totalPages}
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={pagination.page === pagination.totalPages}
-                    onClick={() => handlePageChange(pagination.page + 1)}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+        <TabsContent value="food_distribution">
+          {renderPartnerTable(partners.filter(p => p.type === 'food_distribution'), 'Chưa có điểm phát đồ ăn nào')}
+        </TabsContent>
+
+        <TabsContent value="organization">
+          {renderPartnerTable(partners.filter(p => p.type === 'organization'), 'Chưa có tổ chức nào')}
+        </TabsContent>
+      </Tabs>
 
       <ScrollToTop />
       {!isAdmin && <ChatBubble />}

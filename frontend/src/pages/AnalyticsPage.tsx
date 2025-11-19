@@ -323,29 +323,6 @@ export default function AnalyticsPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="healthcare-card">
           <CardHeader>
-            <CardTitle className="healthcare-heading">Phân loại quyên góp</CardTitle>
-            <CardDescription>Thống kê theo mục đích sử dụng</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {data.donationCategories.map((category: any, index: number) => (
-              <div key={index} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">{category.category}</span>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-muted-foreground">
-                      {category.amount.toLocaleString('vi-VN')} VNĐ
-                    </span>
-                    <Badge variant="secondary">{category.percentage}%</Badge>
-                  </div>
-                </div>
-                <Progress value={category.percentage} className="h-2" />
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card className="healthcare-card">
-          <CardHeader>
             <CardTitle className="healthcare-heading">Bác sĩ tiêu biểu</CardTitle>
             <CardDescription>Thống kê theo số lượng lịch hẹn</CardDescription>
           </CardHeader>

@@ -218,6 +218,70 @@ export const testimonialsAPI = {
 };
 
 // ==========================
+// 📦 PACKAGES API
+// ==========================
+export const packagesAPI = {
+  getAll: (params?: any) => api.get('/packages', { params }),
+  getById: (id: string) => api.get(`/packages/${id}`),
+  create: (data: any) => api.post('/packages', data),
+  update: (id: string, data: any) => api.put(`/packages/${id}`, data),
+  delete: (id: string) => api.delete(`/packages/${id}`),
+};
+
+// ==========================
+// 🏥 CLINICS API
+// ==========================
+export const clinicsAPI = {
+  getAll: (params?: any) => api.get('/clinics', { params }),
+  getById: (id: string) => api.get(`/clinics/${id}`),
+  create: (data: any) => api.post('/clinics', data),
+  update: (id: string, data: any) => api.put(`/clinics/${id}`, data),
+  delete: (id: string) => api.delete(`/clinics/${id}`),
+};
+
+// ==========================
+// 📅 EVENTS API
+// ==========================
+export const eventsAPI = {
+  getAll: (params?: any) => api.get('/events', { params }),
+  getById: (id: string) => api.get(`/events/${id}`),
+  create: (data: any) => api.post('/events', data),
+  update: (id: string, data: any) => api.put(`/events/${id}`, data),
+  delete: (id: string) => api.delete(`/events/${id}`),
+};
+
+// ==========================
+// 📝 EVENT REGISTRATIONS API
+// ==========================
+export const eventRegistrationsAPI = {
+  register: (eventId: string, data: any) =>
+    api.post(`/event-registrations/${eventId}/register`, data), // ĐÚNG
+
+  getByEvent: (eventId: string) =>
+    api.get(`/event-registrations/${eventId}/registrations`),   // ĐÚNG
+  getAll: () =>
+    api.get(`/event-registrations/all`),
+};
+
+export const registrationsAPI = {
+  // Người dùng gửi đơn đăng ký gói khám
+  create: (data: FormData) =>
+    api.post('/registrations', data), // ← CHỈ CẦN THẾ NÀY LÀ ĐỦ!
+
+  // Admin lấy danh sách tất cả đơn
+  getAll: (params?: any) => api.get('/registrations', { params }),
+
+  // Admin duyệt / từ chối đơn
+  updateStatus: (id: string, data: { 
+    status: 'approved' | 'rejected' | 'processing'; 
+    rejectReason?: string 
+  }) => api.patch(`/registrations/${id}`, data),
+
+  // Xóa đơn
+  delete: (id: string) => api.delete(`/registrations/${id}`),
+};
+
+// ==========================
 // 📦 EXPORT MẶC ĐỊNH
 // ==========================
 export default api;

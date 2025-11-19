@@ -14,7 +14,7 @@ import ChatBubble from './ChatbotPage';
 interface Partner {
   _id: string;
   name: string;
-  type: 'hospital' | 'charity' | 'international_organization' | 'association' | 'transportation' | 'food_distribution';
+  type: 'transportation' | 'food_distribution' | 'organization';
   category: string;
   website?: string;
   logo?: string;
@@ -51,7 +51,7 @@ export default function OrganizationsPage() {
         const response = await partnersAPI.getAllList();
         // Lọc các đối tác thuộc loại tổ chức từ thiện
         const filteredPartners = response.data.filter((partner: Partner) =>
-          ['hospital', 'charity', 'international_organization', 'association'].includes(partner.type)
+          partner.type === 'organization' && partner.isActive !== false
         );
         setPartners(filteredPartners || []);
       } catch (err: any) {

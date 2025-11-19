@@ -28,8 +28,8 @@ const DonationSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["completed"], 
-      default: "completed", 
+      enum: ["completed"],
+      default: "completed",
     },
   },
   { timestamps: true }

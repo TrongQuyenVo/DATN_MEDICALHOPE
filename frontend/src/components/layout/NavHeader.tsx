@@ -59,7 +59,7 @@ export default function NavHeader() {
                 size="sm"
                 onClick={() => navigateWithScroll(link.path)}
                 className={`${location.pathname === link.path
-                  ? 'bg-orange-500 text-white hover:bg-orange-600'
+                  ? 'btn-healthcare text-white hover:bg-orange-600'
                   : ''
                   } transition-colors duration-200`}
               >

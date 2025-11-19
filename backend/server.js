@@ -34,7 +34,10 @@ const partnerRoutes = require("./routes/partner");
 const testimonialRoutes = require("./routes/testimonial");
 const analyticsRoutes = require("./routes/analytics");
 const adminRoutes = require("./routes/admin");
-
+const packageRoutes = require("./routes/package");
+const eventRoutes = require("./routes/event");
+const eventRegistrationRoutes = require("./routes/eventRegistrations");
+const registrationRoutes = require("./routes/registrations");
 // Security middleware
 app.use(
   helmet({
@@ -98,6 +101,10 @@ app.use(
   analyticsRoutes
 );
 app.use("/api/admin", adminRoutes);
+app.use("/api/packages", packageRoutes);
+app.use("/api/events", eventRoutes);
+app.use("/api/event-registrations", eventRegistrationRoutes);
+app.use("/api/registrations", registrationRoutes);
 
 // Health check
 app.get("/health", (req, res) => {
@@ -108,7 +115,7 @@ app.get("/health", (req, res) => {
   });
 });
 
-// 404 handler – ĐẶT CUỐI CÙNG!
+// 404 handler
 app.use("*", (req, res) => {
   res.status(404).json({
     success: false,

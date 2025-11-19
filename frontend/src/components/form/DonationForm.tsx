@@ -28,11 +28,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import toast from "react-hot-toast";
 import { ENV } from "@/config/ENV";
-import { sortObject } from "@/utils/sortObject";
 import { calculateVnpSecureHash } from "@/utils/calculateVnpSecureHash";
 import { useAuthStore } from "@/stores/authStore";
 import { assistanceAPI, donationsAPI } from "@/lib/api";
 import { useAppStore } from "@/stores/appStore";
+import VNpay from "@/assets/vnpay-logo.png"
 
 interface PatientAssistance {
   _id: string;
@@ -42,13 +42,6 @@ interface PatientAssistance {
   raisedAmount: number;
   medicalCondition: string;
   urgency: string;
-  patientId: {
-    userId: {
-      fullName: string;
-      phone: string;
-      profile: { address?: string };
-    };
-  };
 }
 
 interface DonationFormProps {
@@ -184,7 +177,9 @@ export default function DonationForm({
     setSelectedAmount(amount);
     setValue("amount", amount);
   };
+
   const { setPaymentInfo } = useAppStore();
+
   const onSubmit = async (data: FormData) => {
     console.log("BƯỚC 1: Form được submit", data);
 
@@ -271,84 +266,6 @@ export default function DonationForm({
         const paymentUrl = `${vnp_Url}?${sortedParams}&vnp_SecureHash=${vnp_SecureHash}`;
         alert(`Thanh toán qua VNPay với số tiền: ${data.amount} VND`);
         window.location.href = paymentUrl;
-        // const { vnp_TmnCode, vnp_HashSecret, vnp_Url, BASE_URL } = ENV;
-
-        // console.log("BƯỚC 4: Kiểm tra cấu hình VNPay", {
-        //   vnp_TmnCode: vnp_TmnCode ? "OK" : "MISSING",
-        //   vnp_HashSecret: vnp_HashSecret ? "OK" : "MISSING",
-        //   vnp_Url: vnp_Url || "MISSING",
-        //   BASE_URL,
-        // });
-
-        // if (!vnp_HashSecret || !vnp_Url || !vnp_TmnCode) {
-        //   console.error("Cấu hình VNPay thiếu");
-        //   toast.error("Cấu hình VNPay chưa đầy đủ");
-        //   return;
-        // }
-
-        // const donationId = donationRes.data.donation._id;
-        // const returnUrl = `${BASE_URL}/donation-result?donationId=${donationId}`;
-
-        // const createDate = new Date().toISOString().slice(0, 19).replace(/[-T:]/g, "");
-        // const orderId = `DON${Date.now()}${Math.floor(Math.random() * 1000)}`;
-
-        // const paymentData: any = {
-        //   vnp_Amount: data.amount * 100,
-        //   vnp_Command: "pay",
-        //   vnp_CreateDate: createDate,
-        //   vnp_CurrCode: "VND",
-        //   vnp_IpAddr: "127.0.0.1",
-        //   vnp_Locale: "vn",
-        //   vnp_OrderInfo: `Quyen gop cho ${assistance.title}`,
-        //   vnp_OrderType: "250001",
-        //   vnp_ReturnUrl: returnUrl,
-        //   vnp_TxnRef: orderId,
-        //   vnp_Version: "2.1.0",
-        //   vnp_TmnCode,
-        // };
-
-        // console.log("BƯỚC 5: Dữ liệu gửi VNPay (trước sort)", paymentData);
-
-        // const sortedParams = Object.keys(paymentData)
-        //   .sort((a, b) => a.localeCompare(b))
-        //   .filter((key) => paymentData[key] != null && paymentData[key] !== "")
-        //   .map((key) => `${key}=${encodeURIComponent(paymentData[key])}`)
-        //   .join("&");
-
-        // console.log("BƯỚC 6: Params đã sort & encode", sortedParams);
-
-        // const vnp_SecureHash = calculateVnpSecureHash(sortedParams, vnp_HashSecret);
-        // console.log("BƯỚC 7: SecureHash", vnp_SecureHash);
-
-        // const finalUrl = `${vnp_Url}?${sortedParams}&vnp_SecureHash=${vnp_SecureHash}`;
-        // console.log("BƯỚC 8: URL thanh toán đầy đủ", finalUrl);
-
-        // // TẠO FORM ĐỘNG
-        // const form = document.createElement("form");
-        // form.method = "POST";
-        // form.action = vnp_Url;
-        // form.target = "_blank";
-
-        // const params = new URLSearchParams(sortedParams);
-        // params.append("vnp_SecureHash", vnp_SecureHash);
-
-        // console.log("BƯỚC 9: Các input trong form", Object.fromEntries(params));
-
-        // for (const [key, value] of params.entries()) {
-        //   const input = document.createElement("input");
-        //   input.type = "hidden";
-        //   input.name = key;
-        //   input.value = value;
-        //   form.appendChild(input);
-        // }
-
-        // document.body.appendChild(form);
-        // console.log("BƯỚC 10: Form đã thêm vào DOM và submit...");
-        // form.submit();
-        // document.body.removeChild(form);
-
-        // toast.success("Đang chuyển đến cổng thanh toán...");
-        // onOpenChange(false);
       } else {
         toast.success("Quyên góp thành công!");
         onOpenChange(false);
@@ -397,8 +314,7 @@ export default function DonationForm({
             Hỗ trợ bệnh nhân
           </DialogTitle>
           <DialogDescription>
-            Đóng góp của bạn giúp {assistance.patientId.userId.fullName} vượt
-            qua khó khăn
+            Đóng góp của bạn giúp một bệnh nhân vượt qua khó khăn
           </DialogDescription>
         </DialogHeader>
 
@@ -608,6 +524,7 @@ export default function DonationForm({
                 className="w-full bg-purple-600 hover:bg-purple-700 text-white"
                 disabled={isSubmitting}
               >
+                <img src={VNpay} alt="VNPay" className="inline h-6 mr-2" /> 
                 {isSubmitting ? "Đang xử lý..." : "Thanh toán ngay"}
               </Button>
             </div>

@@ -41,6 +41,9 @@ import { PartnerManagement } from "./pages/PartnerManagement";
 import AdminTestimonials from "./pages/AdminTestimonials";
 import AssistanceDetailPage from "./pages/AssistanceDetailPage";
 import AllSupportRequests from "./pages/AllSupportRequests";
+import EventManagement from "./pages/EventManagement";
+import PackageManagement from "./pages/PackageManagement";
+import EventDetailPage from "./pages/EventDetailPage";
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -111,6 +114,7 @@ const App = () => {
               <Route path="/about" element={<AboutPage />} />
               <Route path="/organizations" element={<OrganizationsPage />} />
               <Route path="/transport" element={<ExtendedBusPartnerList />} />
+              <Route path="/events/:id" element={<EventDetailPage />} />
               <Route
                 path="/food-distribution"
                 element={<ExtendedFoodDistributionList />}
@@ -237,6 +241,23 @@ const App = () => {
                 element={
                   <ProtectedRoute roles={["admin"]}>
                     <AdminTestimonials />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/packages"
+                element={
+                  <ProtectedRoute roles={["admin"]}>
+                    <PackageManagement />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/events"
+                element={
+                  <ProtectedRoute roles={["admin"]}>
+                    <EventManagement />
                   </ProtectedRoute>
                 }
               />

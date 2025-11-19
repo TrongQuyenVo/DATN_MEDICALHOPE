@@ -9,14 +9,7 @@ const PartnerSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: [
-        "hospital",
-        "charity",
-        "international_organization",
-        "association",
-        "transportation",
-        "food_distribution",
-      ],
+      enum: ["transportation", "food_distribution", "organization"],
       required: true,
     },
     category: {

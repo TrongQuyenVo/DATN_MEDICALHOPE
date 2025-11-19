@@ -1,6 +1,6 @@
 // routes/donations.js
 const express = require("express");
-const { auth, authorize } = require("../middleware/auth"); // THÊM authorize
+const { auth, authorize } = require("../middleware/auth"); 
 const donationController = require("../controllers/donationController");
 
 const router = express.Router();
@@ -10,7 +10,7 @@ router.post("/", auth, donationController.createDonation);
 router.get(
   "/",
   auth,
-  authorize("admin", "charity_admin", "patient"), // CHO PHÉP CẢ 3
+  authorize("admin", "charity_admin", "patient"), 
   donationController.getDonations
 );
 

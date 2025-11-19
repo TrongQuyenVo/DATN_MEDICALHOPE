@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
 
 const testimonialSchema = new mongoose.Schema(
   {
@@ -13,4 +13,4 @@ const testimonialSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.model("Testimonial", testimonialSchema);
+module.exports = mongoose.model("Testimonial", testimonialSchema);

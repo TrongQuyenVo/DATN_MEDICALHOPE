@@ -5,17 +5,19 @@ import {
   Home, Building2, HandHeart, Shield, Award, CheckCircle2,
   HeartHandshake, UserPlus, Activity, Sparkles,
   ExternalLink, Bus, Soup, DollarSign,
-  Send, ChevronLeft, ChevronRight
+  Send, ChevronLeft, ChevronRight,
+  Clock,
+  MapPin,
+  Phone,
+  Mail
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import volunteerCampImg from '@/assets/volunteer-medical-camp.jpg';
-import Khamsuckhoevungcao from '@/assets/Khamsuckhoevungcao.png';
-import charityDistImg from '@/assets/Khamvatangqua.png';
 import childrenHealthImg from '@/assets/Khammatvatangkinh.jpg';
-import elderlyCarelImg from '@/assets/tangquavaphatthuoc.jpg';
+import unthuImg from '@/assets/unthu.jpg';
 import Header from '@/components/layout/NavHeader';
 import Footer from '@/components/layout/Footer';
 import ScrollToTop from '@/components/layout/ScrollToTop';
@@ -23,10 +25,12 @@ import ChatBubble from './ChatbotPage';
 import { useState, useEffect } from 'react';
 import DonationForm from '@/components/form/DonationForm';
 import TestimonialForm from '@/components/form/TestimonialForm';
-import { partnersAPI, testimonialsAPI, assistanceAPI } from '@/lib/api'; // Thêm assistanceAPI
+import { partnersAPI, testimonialsAPI, assistanceAPI, doctorsAPI, clinicsAPI, eventsAPI, packagesAPI } from '@/lib/api'; // Thêm packagesAPI
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import toast from 'react-hot-toast';
 import { HeartAnimation } from '@/components/layout/HeartAnimation';
+import PackageDetailModal from './PackageDetailModal';
+import PackageRegisterForm from '@/components/form/PackageRegisterForm';
 
 interface Partner {
   _id: string;
@@ -45,7 +49,6 @@ interface Partner {
   };
   isActive: boolean;
 }
-
 interface Testimonial {
   _id?: string;
   name: string;
@@ -56,7 +59,6 @@ interface Testimonial {
   visible?: boolean;
   likes?: number;
 }
-
 interface AssistanceRequest {
   _id: string;
   patientId: {
@@ -77,7 +79,26 @@ interface AssistanceRequest {
   urgency: string;
   status: string;
 }
-
+interface Doctor {
+  _id: string;
+  fullName: string;
+  specialty: string;
+  hospital: string;
+  experience: number;
+  avatar?: string;
+  availableDays?: string[];
+  rating?: number;
+}
+interface Clinic {
+  _id: string;
+  name: string;
+  address: string;
+  phone: string;
+  email?: string;
+  services: string[];
+  schedule: string;
+  image?: string;
+}
 export default function LandingPage() {
   const navigate = useNavigate();
   const [openForm, setOpenForm] = useState(false);
@@ -91,10 +112,8 @@ export default function LandingPage() {
   const [testimonialLoading, setTestimonialLoading] = useState(true);
   const [testimonialError, setTestimonialError] = useState<string | null>(null);
   const [selectedAssistanceId, setSelectedAssistanceId] = useState<string | null>(null);
+  // 1. State mới – chỉ còn 2 trường
   const [testimonialFormData, setTestimonialFormData] = useState({
-    name: '',
-    age: '',
-    location: '',
     treatment: '',
     content: '',
   });
@@ -106,6 +125,14 @@ export default function LandingPage() {
   const [assistanceRequests, setAssistanceRequests] = useState<AssistanceRequest[]>([]);
   const [assistanceLoading, setAssistanceLoading] = useState(true);
   const [assistanceError, setAssistanceError] = useState<string | null>(null);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [clinics, setClinics] = useState<Clinic[]>([]);
+  const [doctorLoading, setDoctorLoading] = useState(true);
+  const [clinicLoading, setClinicLoading] = useState(true);
+  const [ongoingEvents, setOngoingEvents] = useState<any[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
+  const [packages, setPackages] = useState<any[]>([]);
+  const [packagesLoading, setPackagesLoading] = useState(true);
 
   // Lấy danh sách đánh giá từ API
   const fetchTestimonials = async () => {
@@ -120,7 +147,6 @@ export default function LandingPage() {
       setTestimonialLoading(false);
     }
   };
-
   // Lấy danh sách yêu cầu hỗ trợ từ API
   const fetchAssistanceRequests = async () => {
     try {
@@ -128,13 +154,11 @@ export default function LandingPage() {
       setAssistanceError(null);
       // Remove limit parameter to get all records
       const response = await assistanceAPI.getPublic();
-
       if (response.data && Array.isArray(response.data.data)) {
         setAssistanceRequests(response.data.data);
       } else {
         setAssistanceRequests([]);
       }
-
       setAssistanceLoading(false);
     } catch (err: any) {
       setAssistanceError(err?.response?.data?.message || 'Lỗi khi tải danh sách yêu cầu hỗ trợ');
@@ -142,117 +166,187 @@ export default function LandingPage() {
       setAssistanceRequests([]);
     }
   };
+  // 2. Xử lý thay đổi input
+  const handleTestimonialInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    setTestimonialFormData({
+      ...testimonialFormData,
+      [e.target.name]: e.target.value,
+    });
+    // Xóa lỗi khi người dùng bắt đầu nhập lại
+    setTestimonialError(null);
+  };
 
-  // Gửi đánh giá mới qua API
+  // 3. Reset form
+  const handleTestimonialFormReset = () => {
+    setTestimonialFormData({ treatment: '', content: '' });
+    setTestimonialError(null);
+  };
+
+  // 4. Submit form ẩn danh
   const handleTestimonialFormSubmit = async () => {
-    if (
-      !testimonialFormData.name ||
-      !testimonialFormData.age ||
-      !testimonialFormData.location ||
-      !testimonialFormData.treatment ||
-      !testimonialFormData.content
-    ) {
-      setTestimonialError('Vui lòng điền đầy đủ tất cả các trường');
+    // Chỉ kiểm tra 2 trường cần thiết
+    if (!testimonialFormData.treatment.trim() || !testimonialFormData.content.trim()) {
+      setTestimonialError('Vui lòng nhập chương trình hỗ trợ và câu chuyện của bạn');
+      toast.error('Vui lòng nhập đầy đủ thông tin');
       return;
     }
 
     try {
-      await testimonialsAPI.create(testimonialFormData);
-      toast.success('Gửi đánh giá thành công!');
-      setTestimonialFormData({ name: '', age: '', location: '', treatment: '', content: '' });
-      setTestimonialError(null);
+      // Gửi kèm các trường ẩn danh (backend vẫn nhận đủ field nếu cần)
+      await testimonialsAPI.create({
+        name: 'Ẩn danh',           // ẩn danh hoàn toàn
+        age: '',                  // hoặc để trống nếu backend cho phép
+        location: 'Việt Nam',      // mặc định
+        treatment: testimonialFormData.treatment,
+        content: testimonialFormData.content,
+        visible: true,             // hiển thị ngay (hoặc false nếu cần duyệt)
+      });
+
+      toast.success('Gửi lời cảm ơn thành công! Cảm ơn bạn đã chia sẻ ❤️');
+
+      // Reset form
+      handleTestimonialFormReset();
       setOpenTestimonialForm(false);
+
+      // Reload danh sách đánh giá
       fetchTestimonials();
     } catch (err: any) {
-      setTestimonialError(err?.response?.data?.message || 'Lỗi khi gửi đánh giá');
+      const msg = err?.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại';
+      setTestimonialError(msg);
+      toast.error(msg);
     }
   };
-
-  const handleTestimonialInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setTestimonialFormData({ ...testimonialFormData, [e.target.name]: e.target.value });
-    setTestimonialError(null);
-  };
-
-  const handleTestimonialFormReset = () => {
-    setTestimonialFormData({ name: '', age: '', location: '', treatment: '', content: '' });
-    setTestimonialError(null);
-  };
-
   useEffect(() => {
     const liked = Object.keys(localStorage)
       .filter((key) => key.startsWith("liked_"))
       .map((key) => key.replace("liked_", ""));
     setLikedTestimonials(liked);
   }, []);
-
   const formatLikeCount = (num?: number) => {
     if (!num) return 0;
     if (num >= 1000000) return (num / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
     if (num >= 1000) return (num / 1000).toFixed(1).replace(/\.0$/, "") + "k";
     return num;
   };
-
   // Format số tiền sang VNĐ
   const formatVND = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
   };
-
+  // Fetch Partners
   useEffect(() => {
     const fetchPartners = async () => {
       try {
         setLoading(true);
         setError(null);
-
         // DÙNG getAllList ĐỂ LẤY TOÀN BỘ
         const res = await partnersAPI.getAllList();
         const partners: Partner[] = res.data || [];
-
         const normalizeLogo = (p: Partner) => ({
           ...p,
           logo: p.logo ? `${API_SERVER}${p.logo}` : undefined,
         });
-
         setBusPartners(
           partners
             .filter((p) => p.type === 'transportation' && p.isActive)
             .map(normalizeLogo)
         );
-
         setFoodDistributionPoints(
           partners
             .filter((p) => p.type === 'food_distribution' && p.isActive)
             .map(normalizeLogo)
         );
-
         setPartnersFromDB(
           partners
-            .filter((p) =>
-              ['hospital', 'charity', 'international_organization', 'association'].includes(p.type) && p.isActive
-            )
+            .filter((p) => p.type === 'organization' && p.isActive)
             .map(normalizeLogo)
         );
-
         setLoading(false);
       } catch (err: any) {
         setError(err?.response?.data?.message || err.message || 'Lỗi khi tải đối tác');
         setLoading(false);
       }
     };
-
     fetchPartners();
     fetchTestimonials();
     fetchAssistanceRequests();
   }, []);
+  // Fetch Doctors
+  useEffect(() => {
+    const fetchDoctors = async () => {
+      try {
+        setDoctorLoading(true);
+        const res = await doctorsAPI.getAll();
+        setDoctors(res.data.slice(0, 6));
+      } catch (err) {
+        console.error('Lỗi tải bác sĩ:', err);
+      } finally {
+        setDoctorLoading(false);
+      }
+    };
+    fetchDoctors();
+  }, []);
+
+  // Fetch Ongoing Events thực từ DB
+  useEffect(() => {
+    const fetchOngoingEvents = async () => {
+      try {
+        setEventsLoading(true);
+        const res = await eventsAPI.getAll();
+        const allEvents = res.data || [];
+
+        // Lọc sự kiện đang diễn ra hoặc sắp diễn ra (trong 30 ngày tới)
+        const now = new Date();
+        const thirtyDaysFromNow = new Date();
+        thirtyDaysFromNow.setDate(now.getDate() + 30);
+
+        const activeEvents = allEvents
+          .filter((event: any) => {
+            const startDate = new Date(event.startDate);
+            const endDate = event.endDate ? new Date(event.endDate) : startDate;
+            return startDate <= thirtyDaysFromNow && endDate >= now && event.isActive !== false;
+          })
+          .sort((a: any, b: any) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
+          .slice(0, 6);
+
+        setOngoingEvents(activeEvents);
+      } catch (err) {
+        console.error('Lỗi tải sự kiện:', err);
+        toast.error('Không tải được sự kiện đang diễn ra');
+      } finally {
+        setEventsLoading(false);
+      }
+    };
+    fetchOngoingEvents();
+  }, []);
+  // Fetch Packages thực từ DB
+  useEffect(() => {
+    const fetchPackages = async () => {
+      try {
+        setPackagesLoading(true);
+        const res = await packagesAPI.getAll();
+        const activePackages = (res.data || [])
+          .filter((pkg: any) => pkg.isActive !== false)
+          .slice(0, 6); // lấy 6 gói nổi bật
+        setPackages(activePackages);
+      } catch (err) {
+        console.error('Lỗi tải gói khám:', err);
+        toast.error('Không tải được gói khám');
+      } finally {
+        setPackagesLoading(false);
+      }
+    };
+    fetchPackages();
+  }, []);
 
   const handleLike = async (id: string) => {
     if (localStorage.getItem(`liked_${id}`)) return;
-
     try {
       const res = await fetch(
         `${import.meta.env.VITE_REACT_API_URL_BACKEND}/api/testimonials/${id}/like`,
         { method: "PUT" }
       );
-
       if (res.ok) {
         localStorage.setItem(`liked_${id}`, "true");
         setLikedTestimonials((prev) => [...prev, id]);
@@ -266,112 +360,158 @@ export default function LandingPage() {
       console.error("Lỗi khi thả tim:", error);
     }
   };
-
   const calculateAge = (dateOfBirth: string) => {
     const birthDate = new Date(dateOfBirth);
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
-
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
       age--;
     }
-
     return age;
   };
+  // Add OngoingEventCard component
+  const OngoingEventCard: React.FC<{ event: any; index: number }> = ({ event, index }) => {
+    const navigate = useNavigate();
 
-  const volunteerEvents = [
-    {
-      title: 'Khám sức khỏe miễn phí vùng cao',
-      description: 'Đoàn bác sĩ tình nguyện mang y tế đến với đồng bào vùng cao, cung cấp dịch vụ khám bệnh và tư vấn sức khỏe tận tâm.',
-      location: 'Hà Giang',
-      date: '15/03/2025',
-      image: Khamsuckhoevungcao,
-      participants: '50+ tình nguyện viên',
-      beneficiaries: '500+ người dân'
-    },
-    {
-      title: 'Tặng quà & Khám bệnh cho người già',
-      description: 'Chăm sóc sức khỏe và trao yêu thương đến người cao tuổi neo đơn, mang lại niềm vui và hy vọng.',
-      location: 'Quảng Trị',
-      date: '20/03/2025',
-      image: charityDistImg,
-      participants: '30+ tình nguyện viên',
-      beneficiaries: '200+ người cao tuổi'
-    },
-    {
-      title: 'Khám mắt & Tặng kính học sinh',
-      description: 'Giúp các em học sinh có cơ hội học tập tốt hơn với đôi mắt sáng và những chiếc kính phù hợp.',
-      location: 'Nghệ An',
-      date: '25/03/2025',
-      image: childrenHealthImg,
-      participants: '40+ tình nguyện viên',
-      beneficiaries: '600+ học sinh'
-    },
-    {
-      title: 'Phát quà & Thuốc cho bệnh nhân nghèo',
-      description: 'Hỗ trợ thuốc men và quà tặng thiết thực cho bệnh nhân có hoàn cảnh khó khăn, lan tỏa tinh thần nhân ái.',
-      location: 'TP. Hồ Chí Minh',
-      date: '01/04/2025',
-      image: elderlyCarelImg,
-      participants: '60+ tình nguyện viên',
-      beneficiaries: '300+ bệnh nhân'
-    }
-  ];
+    const formatDate = (dateStr: string) => {
+      return new Date(dateStr).toLocaleDateString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    };
 
-  const impactStories = [
-    {
-      number: '2,500+',
-      title: 'Ca phẫu thuật mắt',
-      description: 'Giúp người nghèo lấy lại ánh sáng và niềm tin vào cuộc sống',
-      icon: CheckCircle2
-    },
-    {
-      number: '15,000+',
-      title: 'Bệnh nhân tim mạch',
-      description: 'Được chăm sóc tận tâm và cấp thuốc miễn phí',
-      icon: Heart
-    },
-    {
-      number: '8,000+',
-      title: 'Trẻ em khuyết tật',
-      description: 'Nhận được hỗ trợ phục hồi chức năng và hòa nhập cộng đồng',
-      icon: Users
-    },
-    {
-      number: '50+',
-      title: 'Tỉnh thành',
-      description: 'Đã có mặt các chương trình y tế thiện nguyện',
-      icon: Building2
-    }
-  ];
+    const startDate = new Date(event.startDate);
+    const endDate = event.endDate ? new Date(event.endDate) : startDate;
+    const isOngoing = startDate <= new Date() && endDate >= new Date();
 
-  const processSteps = [
-    {
-      number: '01',
-      title: 'Đăng ký thông tin',
-      description: 'Người bệnh hoặc tình nguyện viên dễ dàng đăng ký qua hệ thống trực tuyến minh bạch',
-      icon: Users
-    },
-    {
-      number: '02',
-      title: 'Xác minh & Phân loại',
-      description: 'Thông tin được xác thực nhanh chóng, đảm bảo hỗ trợ đúng đối tượng và nhu cầu',
-      icon: CheckCircle2
-    },
-    {
-      number: '03',
-      title: 'Kết nối bác sĩ',
-      description: 'Hệ thống thông minh kết nối bệnh nhân với bác sĩ và tổ chức phù hợp nhất',
-      icon: Stethoscope
-    },
-    {
-      number: '04',
-      title: 'Khám & Điều trị',
-      description: 'Thực hiện khám chữa bệnh miễn phí với sự tận tâm và chuyên nghiệp',
-      icon: Heart
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ delay: index * 0.1 }}
+        className="group"
+      >
+        <Card
+          className="h-full overflow-hidden border-2 transition-all duration-300 cursor-pointer
+                   group-hover:shadow-2xl
+                   group-hover:border-blue-500 
+                   group-hover:bg-blue-50/70
+                   healthcare-card rounded-2xl"
+          onClick={() => navigate(`/events/${event._id}`)}
+        >
+          {/* Ảnh + Badge */}
+          <div className="relative h-48">
+            <img
+              src={event.image ? `${API_SERVER}${event.image}` : childrenHealthImg}
+              alt={event.title}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              onError={(e) => { e.currentTarget.src = childrenHealthImg; }}
+            />
+
+            <div className="absolute top-3 right-3 bg-blue-600 text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg backdrop-blur-sm">
+              <Calendar className="h-3.5 w-3.5" />
+              <span className="tracking-wider">
+                {formatDate(event.startDate)}
+                {event.endDate && (
+                  <>
+                    <span className="mx-1">→</span>
+                    {formatDate(event.endDate)}
+                  </>
+                )}
+              </span>
+            </div>
+
+            {/* Badge trạng thái – ĐỀU XANH DƯƠNG, KHÔNG NHÁY */}
+            <div className="absolute top-3 left-3">
+              {isOngoing ? (
+                <div className="flex items-center gap-1.5 bg-blue-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
+                  <Sparkles className="h-3.5 w-3.5 text-yellow-300" />
+                  <span>ĐANG DIỄN RA</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 bg-blue-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-md">
+                  <Clock className="h-3.5 w-3.5" />
+                  <span>SẮP DIỄN RA</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <CardContent className="p-5 space-y-4">
+            <h3 className="font-bold text-lg line-clamp-2 group-hover:text-blue-600 transition-colors">
+              {event.title}
+            </h3>
+
+            <div className="space-y-2.5 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                <span className="truncate">{event.location}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                <span>{event.participants || 0} / {event.target} người tham gia</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <HandHeart className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                <span>{event.organizer}</span>
+              </div>
+            </div>
+
+            {/* Thanh tiến độ */}
+            <div className="mt-3">
+              <div className="flex justify-between text-xs mb-1">
+                <span>Tiến độ tham gia</span>
+                <span className="font-medium text-blue-600">
+                  {event.target > 0
+                    ? Math.round(((event.participants || 0) / event.target) * 100)
+                    : 0}%
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="bg-gradient-to-r from-blue-500 to-cyan-500 h-2 rounded-full transition-all duration-700"
+                  style={{
+                    width: `${Math.min(((event.participants || 0) / event.target) * 100, 100)}%`
+                  }}
+                />
+              </div>
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-4 w-full border-blue-300 text-blue-600 hover:bg-blue-50 hover:border-blue-500 font-medium"
+            >
+              Xem chi tiết
+              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </Button>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  };
+
+  const [detailOpen, setDetailOpenState] = useState(false);
+  const [formOpen, setFormOpen] = useState<boolean>(openForm);
+
+  useEffect(() => {
+    if (formOpen !== openForm) setOpenForm(formOpen);
+  }, [formOpen]);
+
+  useEffect(() => {
+    if (openForm !== formOpen) setFormOpen(openForm);
+  }, [openForm]);
+
+  function setDetailOpen(open: boolean): void {
+    setDetailOpenState(open);
+
+    if (!open) {
+      setFormOpen(false);
     }
-  ];
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -400,7 +540,7 @@ export default function LandingPage() {
               className="mb-8 inline-flex items-center gap-2 rounded-full bg-white/10 px-6 py-3 backdrop-blur-sm border border-white/20"
             >
               <Shield className="h-5 w-5 text-green-300" />
-              <span className="text-sm font-medium">Nền tảng y tế từ thiện uy tín #1 Việt Nam</span>
+              <span className="text-sm font-medium">Bạn khỏe chúng tôi vui</span>
             </motion.div>
             <h1 className="mb-8 text-6xl font-bold leading-tight tracking-tight md:text-7xl lg:text-7xl">
               Chăm sóc sức khỏe
@@ -449,9 +589,8 @@ export default function LandingPage() {
           </motion.div>
         </div>
       </section>
-
-      {/* Process Section */}
-      <section className="py-20 bg-background">
+      {/* === HOẠT ĐỘNG ĐANG DIỄN RA (MỚI) === */}
+      <section className="py-20 bg-gradient-to-br from-primary/10 via-background to-secondary/10">
         <div className="container mx-auto px-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -459,52 +598,151 @@ export default function LandingPage() {
             viewport={{ once: true }}
             className="max-w-3xl mx-auto text-center mb-16"
           >
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/10 px-6 py-2">
-              <CheckCircle2 className="h-5 w-5 text-primary" />
-              <span className="text-sm font-medium text-primary">Quy trình hoạt động</span>
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-orange-100 px-6 py-2">
+              <Sparkles className="h-5 w-5 text-orange-600" />
+              <span className="text-sm font-bold text-orange-600">ĐANG DIỄN RA</span>
             </div>
             <h2 className="healthcare-heading text-4xl font-bold mb-4">
-              Hành trình mang sức khỏe đến bạn
+              Hoạt Động Thiện Nguyện Đang Diễn Ra
             </h2>
             <p className="text-xl text-muted-foreground">
-              Quy trình của chúng tôi được thiết kế đơn giản, minh bạch và hiệu quả, đảm bảo mọi người đều được tiếp cận dịch vụ y tế chất lượng.
+              Cùng theo dõi và tham gia ngay các chương trình đang được triển khai trên toàn quốc.
             </p>
           </motion.div>
-          <div className="max-w-5xl mx-auto">
-            <div className="grid md:grid-cols-2 gap-8">
-              {processSteps.map((step, index) => (
-                <motion.div
-                  key={step.number}
-                  initial={{ opacity: 0, x: index % 2 === 0 ? -20 : 20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.1 }}
-                  className="relative"
-                >
-                  <Card className="healthcare-card h-full">
-                    <CardContent className="pt-6">
-                      <div className="flex items-start gap-4">
-                        <div className="flex-shrink-0">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-                            <step.icon className="h-6 w-6 text-primary" />
-                          </div>
-                        </div>
-                        <div className="flex-1">
-                          <div className="text-4xl font-bold text-primary mb-2">{step.number}</div>
-                          <h3 className="font-bold text-lg mb-2">{step.title}</h3>
-                          <p className="text-muted-foreground">{step.description}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
+          {/* Danh sách sự kiện đang diễn ra */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {ongoingEvents.map((event, index) => (
+              <OngoingEventCard key={event.id} event={event} index={index} />
+            ))}
+          </div>
+          {/* Nếu không có sự kiện nào */}
+          {ongoingEvents.length === 0 && (
+            <div className="text-center py-12">
+              <div className="mx-auto w-24 h-24 mb-4 rounded-full bg-orange-100 flex items-center justify-center">
+                <Calendar className="h-12 w-12 text-orange-400" />
+              </div>
+              <p className="text-lg text-muted-foreground">
+                Hiện chưa có hoạt động nào đang diễn ra. Hãy quay lại sau!
+              </p>
             </div>
+          )}
+          <div className="mt-12 text-center">
+            <Button size="lg" onClick={() => navigate('/programs')}>
+              Xem tất cả chương trình <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
           </div>
         </div>
       </section>
 
-      {/* Volunteer Events Section */}
+      {/* === GÓI KHÁM MIỄN PHÍ === */}
+      <section className="py-20 bg-background relative">
+        <div className="container mx-auto px-4">
+          {/* Tiêu đề section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="max-w-3xl mx-auto text-center mb-16"
+          >
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-blue-100 px-6 py-2 text-blue-700">
+              <Heart className="h-5 w-5" />
+              <span className="text-sm font-medium">Hỗ trợ y tế miễn phí</span>
+            </div>
+            <h2 className="healthcare-heading text-4xl font-bold mb-4">
+              Chúng tôi ở đây để giúp bạn
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Nếu bạn đang gặp khó khăn về sức khỏe và chi phí, hãy để lại thông tin.
+              Chúng tôi sẽ xem xét và hỗ trợ bạn trong khả năng tốt nhất.
+            </p>
+          </motion.div>
+          {/* Grid 3 gói tiêu biểu */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto mb-12">
+            {packages.map((pkg, i) => (
+              <motion.div
+                key={pkg.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="group"
+              >
+                <Card
+                  className="healthcare-card h-full group-hover:shadow-2xl group-hover:border-primary transition-all duration-300 border-2"
+                  onClick={() => setDetailOpen(true)}
+                >
+                  <div className="h-48 w-full overflow-hidden rounded-t-lg">
+                    <img
+                      src={pkg.image ? `${API_SERVER}${pkg.image}` : unthuImg}
+                      alt={pkg.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 "
+                      onError={(e) => {
+                        e.currentTarget.src = unthuImg;
+                      }}
+                    />
+                  </div>
+                  <CardContent className="p-6 space-y-4">
+                    <div className="inline-flex items-center gap-1 text-sm font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full">
+                      <span>{pkg.specialty}</span>
+                    </div>
+                    <h3 className="font-bold text-lg text-gray-900 group-hover:text-primary transition-colors">
+                      {pkg.title}
+                    </h3>
+                    <p className="text-sm text-gray-600 line-clamp-2">{pkg.shortDescription}</p>
+                    <p className="text-xs italic text-orange-600">
+                      <strong>Điều kiện:</strong> {pkg.conditions}
+                    </p>
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFormOpen(true);
+                      }}
+                      className="mt-4"
+                    >
+                      <Button
+                        className="w-full bg-gradient-to-r from-blue-600 to-green-600 text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all"
+                        size="lg"
+                      >
+                        Đăng ký ngay
+                        <ArrowRight className="ml-2 h-5 w-5" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <PackageDetailModal
+                  pkg={pkg}
+                  open={detailOpen}
+                  onOpenChange={setDetailOpen}
+                  onRegister={() => {
+                    setDetailOpen(false);
+                    setFormOpen(true);
+                  }}
+                />
+
+                <PackageRegisterForm
+                  pkg={pkg}
+                  open={formOpen}
+                  onOpenChange={setFormOpen}
+                />
+              </motion.div>
+            ))}
+          </div>
+          {/* Nút xem tất cả */}
+          <div className="text-center">
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => navigate('/services')}
+              className="border-2 border-blue-600 text-blue-600 hover:bg-blue-50 rounded-full px-8"
+            >
+              Xem tất cả gói hỗ trợ
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+      </section>
+      {/* Support Requests Section */}
       <section className="py-20 bg-gradient-to-br from-primary/5 via-background to-secondary/5">
         <div className="container mx-auto px-4">
           <motion.div
@@ -514,126 +752,404 @@ export default function LandingPage() {
             className="max-w-3xl mx-auto text-center mb-16"
           >
             <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/10 px-6 py-2">
-              <Calendar className="h-5 w-5 text-primary" />
-              <span className="text-sm font-medium text-primary">Sự kiện thiện nguyện</span>
+              <DollarSign className="h-5 w-5 text-primary" />
+              <span className="text-sm font-medium text-primary">Kêu gọi hỗ trợ</span>
             </div>
             <h2 className="healthcare-heading text-4xl font-bold mb-4">
-              Cùng nhau lan tỏa yêu thương
+              Yêu Cầu Hỗ Trợ Cần Ủng Hộ
             </h2>
             <p className="text-xl text-muted-foreground">
-              Tham gia các chương trình thiện nguyện của chúng tôi để mang sức khỏe và niềm vui đến cộng đồng.
+              Cùng chung tay giúp đỡ những bệnh nhân cần hỗ trợ tài chính để vượt qua khó khăn.
             </p>
           </motion.div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {volunteerEvents.map((event, index) => (
-              <motion.div
-                key={event.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <Card className="healthcare-card h-full overflow-hidden">
-                  <div className="relative h-48">
-                    <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
-                    <div className="absolute top-2 right-2 bg-primary/80 text-white text-xs font-semibold px-2 py-1 rounded-full">
-                      {event.date}
-                    </div>
-                  </div>
-                  <CardContent className="pt-4">
-                    <h3 className="font-bold text-lg mb-2">{event.title}</h3>
-                    <p className="text-sm text-muted-foreground mb-4">{event.description}</p>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Building2 className="h-4 w-4 text-primary" />
-                        <span>{event.location}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Users className="h-4 w-4 text-primary" />
-                        <span>{event.participants}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Heart className="h-4 w-4 text-primary" />
-                        <span>{event.beneficiaries}</span>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-4 w-full"
-                      onClick={() => navigate('/register')}
-                    >
-                      Tham gia ngay
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.8 }}
-            className="mt-12 text-center"
-          >
-            <Button
-              size="lg"
-              onClick={() => navigate('/programs')}
-            >
-              Xem thêm chương trình
+          {assistanceLoading ? (
+            <div className="text-center text-muted-foreground">Đang tải yêu cầu hỗ trợ...</div>
+          ) : assistanceError ? (
+            <div className="text-center text-red-500">{assistanceError}</div>
+          ) : assistanceRequests.length === 0 ? (
+            <div className="text-center text-muted-foreground">Hiện chưa có yêu cầu hỗ trợ nào.</div>
+          ) : (
+            <div className="max-w-7xl mx-auto px-2">
+              <div className="relative max-w-6xl mx-auto">
+                {currentIndex > 0 && (
+                  <button
+                    onClick={() => setCurrentIndex((prev) => Math.max(prev - 3, 0))}
+                    className="absolute -left-12 top-1/2 transform -translate-y-1/2 bg-primary/10 hover:bg-primary/20 text-primary p-2 rounded-full shadow-md transition z-10"
+                  >
+                    <ChevronLeft className="h-6 w-6" />
+                  </button>
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {assistanceRequests
+                    .slice(currentIndex, currentIndex + 3)
+                    .map((request, index) => (
+                      <motion.div
+                        key={request._id}
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: index * 0.1 }}
+                        className="group"
+                      >
+                        <div
+                          className="cursor-pointer"
+                          onClick={() => navigate(`/assistance/${request._id}`)}
+                        >
+                          <Card className="healthcare-card h-full group-hover:shadow-2xl group-hover:border-primary transition-all duration-300 border-2">
+                            <CardContent className="pt-6">
+                              <div className="flex items-center justify-between mb-4">
+                                <div>
+                                  <h3 className="font-bold text-lg text-primary">
+                                    Ẩn danh
+                                  </h3>
+                                </div>
+                                <Badge
+                                  variant={
+                                    request.urgency === 'critical' ? 'destructive' :
+                                      request.urgency === 'high' ? 'default' :
+                                        request.urgency === 'medium' ? 'secondary' : 'outline'
+                                  }
+                                >
+                                  {request.urgency === 'critical' ? 'Khẩn cấp' :
+                                    request.urgency === 'high' ? 'Cao' :
+                                      request.urgency === 'medium' ? 'Trung bình' : 'Thấp'}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-primary font-semibold mb-2 line-clamp-2">
+                                {request.medicalCondition}
+                              </p>
+                              <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                                {request.description}
+                              </p>
+                              <div className="mb-4">
+                                <div className="flex justify-between text-sm mb-2">
+                                  <span>Số tiền cần:</span>
+                                  <span className="font-semibold">{formatVND(request.requestedAmount)}</span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                                  <div
+                                    className="bg-gradient-to-r from-primary to-secondary h-2.5 rounded-full transition-all duration-500"
+                                    style={{ width: `${Math.min((request.raisedAmount / request.requestedAmount) * 100, 100)}%` }}
+                                  />
+                                </div>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  Đã quyên góp: {((request.raisedAmount / request.requestedAmount) * 100).toFixed(0)}%
+                                </p>
+                              </div>
+                              <div
+                                onClick={(e) => e.stopPropagation()}
+                                className="mt-4"
+                              >
+                                <Button
+                                  className="bg-red-500 text-white hover:bg-red-600 w-full"
+                                  onClick={() => setSelectedAssistanceId(request._id)}
+                                >
+                                  Ủng hộ ngay
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </div>
+                      </motion.div>
+                    ))}
+                </div>
+                {currentIndex + 3 < assistanceRequests.length && (
+                  <button
+                    onClick={() =>
+                      setCurrentIndex((prev) =>
+                        Math.min(prev + 3, assistanceRequests.length - 3)
+                      )
+                    }
+                    className="absolute -right-12 top-1/2 transform -translate-y-1/2 bg-primary/10 hover:bg-primary/20 text-primary p-2 rounded-full shadow-md transition z-10"
+                  >
+                    <ChevronRight className="h-6 w-6" />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+          <motion.div className="mt-12 text-center">
+            <Button size="lg" onClick={() => navigate('/support-requests')}>
+              Xem thêm yêu cầu hỗ trợ
             </Button>
           </motion.div>
         </div>
       </section>
-
-      {/* Impact Stories Section */}
+      {/* Bus Partners Section */}
       <section className="py-20 bg-gradient-to-br from-primary/10 via-background to-secondary/10">
         <div className="container mx-auto px-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="max-w-3xl mx-auto text-center mb-16"
+            className="max-w-5xl mx-auto text-center mb-16"
           >
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/10 px-6 py-2">
-              <Award className="h-5 w-5 text-primary" />
-              <span className="text-sm font-medium text-primary">Tác động của chúng tôi</span>
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/10 px-6 py-2 text-primary">
+              <Bus className="h-5 w-5" />
+              <span className="text-sm font-medium">Hợp tác vận chuyển</span>
             </div>
-            <h2 className="healthcare-heading text-4xl font-bold mb-4">
-              Thay đổi cuộc sống
+            <h2 className="healthcare-heading text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              Các đội xe thiện nguyện
             </h2>
-            <p className="text-xl text-muted-foreground">
-              Mỗi con số là một câu chuyện, một nụ cười, và một hy vọng được thắp sáng.
+            <p className="text-xl text-muted-foreground leading-relaxed">
+              Chúng tôi đã liên hệ hợp tác với các nhà xe uy tín để hỗ trợ bệnh nhân và người nhà di chuyển. Khi đặt xe, bạn sẽ được 1 vé miễn phí, chi phí còn lại sẽ được tính toán và hỗ trợ bởi MedicalHope+.
             </p>
           </motion.div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {impactStories.map((story, index) => (
-              <motion.div
-                key={story.title}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <Card className="healthcare-card text-center h-full">
-                  <CardContent className="pt-8">
-                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-primary shadow-lg">
-                      <story.icon className="h-7 w-7 text-white" />
+          {loading ? (
+            <div className="text-center text-muted-foreground">Đang tải dữ liệu...</div>
+          ) : error ? (
+            <div className="text-center text-red-500">{error}</div>
+          ) : busPartners.length === 0 ? (
+            <div className="text-center text-muted-foreground">Hiện chưa có đối tác vận chuyển nào.</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+              {busPartners.slice(0, 6).map((partner, index) => (
+                <motion.div
+                  key={partner._id}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.3, delay: index * 0.1 }}
+                  className="group"
+                >
+                  <div
+                    className="cursor-pointer p-6 bg-background rounded-2xl rounded-2xl border-2 border-primary/10 shadow-lg
+                       group-hover:shadow-2xl group-hover:border-primary group-hover:bg-orange-50
+                       transition-all duration-300"
+                  >
+                    <div className="flex flex-col items-center text-center">
+                      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-md overflow-hidden group-hover:scale-110 transition-transform duration-300">
+                        <img
+                          src={
+                            partner.logo
+                              ? (partner.logo.startsWith('http') ? partner.logo : `${API_SERVER}${partner.logo}`)
+                              : '/default-logo.png'
+                          }
+                          alt={partner.name}
+                          className="h-12 w-12 object-contain"
+                        />
+                      </div>
+                      <p className="text-lg font-semibold mb-2 group-hover:text-primary transition-colors">
+                        {partner.name}
+                      </p>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        SĐT: {partner.details?.phone || 'Chưa cung cấp'}
+                      </p>
+                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                        {partner.details?.description || 'Hỗ trợ vận chuyển cho bệnh nhân và người nhà.'}
+                      </p>
+                      {partner.website && (
+                        <a
+                          href={partner.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-sm text-orange-500 hover:text-orange-600 font-medium transition-opacity duration-300"
+                        >
+                          Tìm hiểu thêm
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      )}
                     </div>
-                    <div className="healthcare-heading text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                      {story.number}
-                    </div>
-                    <h3 className="font-bold text-lg mb-2">{story.title}</h3>
-                    <p className="text-sm text-muted-foreground">{story.description}</p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+          <div className="mt-12 text-center">
+            <Button
+              size="lg"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-white font-medium shadow-md hover:shadow-lg hover:bg-primary/90 transition-all duration-300"
+              onClick={() => navigate('/transport')}
+            >
+              Xem thêm
+            </Button>
           </div>
         </div>
       </section>
-
+      {/* Food Distribution Points Section */}
+      <section className="py-20 bg-background">
+        <div className="container mx-auto px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="max-w-5xl mx-auto text-center mb-16"
+          >
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/10 px-6 py-3 border border-primary/20">
+              <Soup className="h-5 w-5 text-primary" />
+              <span className="text-sm font-semibold text-primary">Hỗ trợ dinh dưỡng</span>
+            </div>
+            <h2 className="healthcare-heading text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              Các điểm phát đồ ăn
+            </h2>
+            <p className="text-xl text-muted-foreground leading-relaxed">
+              Chúng tôi liên hệ với các tổ chức và mạnh thường quân chuyên nấu ăn để lên lịch phát đồ ăn miễn phí. Bệnh nhân và người nhà có thể nắm lịch trình cụ thể hàng ngày, tuần, tháng tại các địa điểm sau.
+            </p>
+          </motion.div>
+          {loading ? (
+            <div className="text-center text-muted-foreground">Đang tải dữ liệu...</div>
+          ) : error ? (
+            <div className="text-center text-red-500">{error}</div>
+          ) : foodDistributionPoints.length === 0 ? (
+            <div className="text-center text-muted-foreground">Hiện chưa có điểm phát đồ ăn nào.</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+              {foodDistributionPoints.slice(0, 6).map((point, index) => (
+                <motion.div
+                  key={point._id}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.3, delay: index * 0.1 }}
+                  className="group"
+                >
+                  <div
+                    className="cursor-pointer p-6 bg-background rounded-2xl rounded-2xl border-2 border-primary/10 shadow-lg
+                       group-hover:shadow-2xl group-hover:border-primary group-hover:bg-orange-50
+                       transition-all duration-300"
+                  >
+                    <div className="flex flex-col items-center text-center">
+                      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-md overflow-hidden group-hover:scale-110 transition-transform duration-300">
+                        <img
+                          src={
+                            point.logo
+                              ? (point.logo.startsWith('http') ? point.logo : `${API_SERVER}${point.logo}`)
+                              : '/default-logo.png'
+                          }
+                          alt={point.name}
+                          className="h-12 w-12 object-contain"
+                          onError={(e) => {
+                            e.currentTarget.src = '/default-logo.png';
+                          }}
+                        />
+                      </div>
+                      <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
+                        {point.details?.location || 'Chưa cung cấp địa điểm'}
+                      </h3>
+                      <p className="text-sm text-muted-foreground mb-2">Lịch: {point.details?.schedule || 'Chưa cung cấp lịch'}</p>
+                      <p className="text-sm text-muted-foreground mb-2">Tổ chức: {point.details?.organizer || 'Chưa cung cấp tổ chức'}</p>
+                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                        {point.details?.description || 'Phát đồ ăn miễn phí cho bệnh nhân và người nhà.'}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+          <div className="mt-12 text-center">
+            <a
+              href="/food-distribution"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-white font-medium shadow-md hover:shadow-lg hover:bg-primary/90 transition-all duration-300"
+            >
+              Xem nhiều hơn
+            </a>
+          </div>
+        </div>
+      </section>
+      {/* Partners Section */}
+      <section className="py-20 bg-gradient-to-br from-primary/10 via-background to-secondary/10">
+        <div className="container mx-auto px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="max-w-5xl mx-auto text-center mb-16"
+          >
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/10 px-6 py-3 border border-primary/20">
+              <Building2 className="h-5 w-5 text-primary" />
+              <span className="text-sm font-semibold text-primary">Tổ chức từ thiện</span>
+            </div>
+            <h2 className="healthcare-heading text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              Cùng Nhau Tạo Nên Thay Đổi
+            </h2>
+            <p className="text-xl text-muted-foreground leading-relaxed">
+              Các tổ chức y tế và từ thiện uy tín – những người bạn đồng hành trong hành trình chăm sóc cộng đồng.
+            </p>
+          </motion.div>
+          {loading ? (
+            <div className="text-center text-muted-foreground">Đang tải dữ liệu đối tác...</div>
+          ) : error ? (
+            <div className="text-center text-red-500">{error}</div>
+          ) : partnersFromDB.length === 0 ? (
+            <div className="text-center text-muted-foreground">Hiện chưa có đối tác nào được thêm.</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 max-w-8xl mx-auto">
+              {partnersFromDB.slice(0, 10).map((partner, index) => (
+                <motion.div
+                  key={partner._id}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.3, delay: index * 0.1 }}
+                  className="group relative"
+                >
+                  <div
+                    className="cursor-pointer p-6 bg-background rounded-2xl rounded-2xl border-2 border-primary/10 shadow-lg
+                       group-hover:shadow-2xl group-hover:border-primary group-hover:bg-orange-50
+                       transition-all duration-300"
+                  >
+                    <div className="flex flex-col items-center text-center">
+                      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-md overflow-hidden group-hover:scale-110 transition-transform duration-300">
+                        <img
+                          src={
+                            partner.logo
+                              ? (partner.logo.startsWith('http') ? partner.logo : `${API_SERVER}${partner.logo}`)
+                              : '/default-logo.png'
+                          }
+                          alt={partner.name}
+                          className="h-12 w-12 object-contain"
+                          onError={(e) => {
+                            e.currentTarget.src = '/default-logo.png';
+                          }}
+                        />
+                      </div>
+                      {/* Tên đối tác - cắt giữa, 1 dòng, hover hiện full */}
+                      <div className="relative w-full px-2">
+                        <p
+                          className="text-[15px] font-semibold text-foreground line-clamp-1 text-center group-hover:text-primary transition-colors"
+                        >
+                          {partner.name.length > 20
+                            ? `${partner.name.slice(0, 8)}...${partner.name.slice(-8)}`
+                            : partner.name}
+                        </p>
+                        {/* Tooltip khi hover */}
+                        {partner.name.length > 20 && (
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 whitespace-nowrap z-10">
+                            {partner.name}
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-0 h-0 border-4 border-transparent border-t-gray-900"></div>
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">{partner.category}</p>
+                      {partner.website && (
+                        <a
+                          href={partner.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-sm text-orange-500 hover:text-orange-600 font-medium transition-opacity duration-300"
+                        >
+                          Tìm hiểu thêm
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+          <div className="mt-12 text-center">
+            <Button
+              size="lg"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-white font-medium shadow-md hover:shadow-lg hover:bg-primary/90 transition-all duration-300"
+              onClick={() => navigate('/organizations')}
+            >
+              Xem thêm đối tác
+            </Button>
+          </div>
+        </div>
+      </section>
       {/* Testimonials Section */}
       <section className="py-20 bg-background relative">
         <div className="container mx-auto px-4">
@@ -655,7 +1171,6 @@ export default function LandingPage() {
               Nghe những lời chia sẻ chân thành từ những người đã được MedicalHope+ đồng hành.
             </p>
           </motion.div>
-
           {testimonialLoading ? (
             <div className="text-center text-muted-foreground">Đang tải đánh giá...</div>
           ) : testimonialError ? (
@@ -673,8 +1188,7 @@ export default function LandingPage() {
                     <ChevronLeft className="h-6 w-6" />
                   </button>
                 )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3  gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {testimonials
                     .filter((t) => t.visible !== false)
                     .slice(currentIndex, currentIndex + 3)
@@ -687,7 +1201,6 @@ export default function LandingPage() {
                         transition={{ delay: index * 0.1 }}
                         className="group"
                       >
-                        {/* CARD CÓ HOVER ĐẸP + CLICK MỞ DIALOG */}
                         <div
                           className="cursor-pointer"
                           onClick={() => setSelectedTestimonial(testimonial)}
@@ -704,16 +1217,11 @@ export default function LandingPage() {
                               </div>
                               <div className="border-t pt-4 flex items-center justify-between">
                                 <div>
-                                  <p className="font-semibold group-hover:text-primary transition-colors">
-                                    {testimonial.name}, {testimonial.age} tuổi
-                                  </p>
-                                  <p className="text-sm text-muted-foreground">
-                                    {testimonial.location}
+                                  <p className="font-semibold text-primary">
+                                    Ẩn danh
                                   </p>
                                   <p className="text-sm text-primary">{testimonial.treatment}</p>
                                 </div>
-
-                                {/* NÚT LIKE – NGĂN CHUYỂN DIALOG */}
                                 <div
                                   onClick={(e) => e.stopPropagation()}
                                   className="flex items-center"
@@ -757,7 +1265,6 @@ export default function LandingPage() {
               </div>
             </div>
           )}
-
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -773,7 +1280,6 @@ export default function LandingPage() {
               Gửi lời yêu thương
             </Button>
           </motion.div>
-
           <Dialog open={openTestimonialForm} onOpenChange={setOpenTestimonialForm}>
             <DialogContent className="sm:max-w-[600px]">
               <DialogHeader>
@@ -791,7 +1297,6 @@ export default function LandingPage() {
               />
             </DialogContent>
           </Dialog>
-
           <Dialog
             open={!!selectedTestimonial}
             onOpenChange={() => setSelectedTestimonial(null)}
@@ -805,7 +1310,6 @@ export default function LandingPage() {
                   {selectedTestimonial?.location} | {selectedTestimonial?.treatment}
                 </DialogDescription>
               </DialogHeader>
-
               <div className="mt-4 space-y-2">
                 <p className="text-muted-foreground">{selectedTestimonial?.content}</p>
                 <div className="flex items-center gap-1 text-red-500 font-medium mt-2">
@@ -817,469 +1321,6 @@ export default function LandingPage() {
           </Dialog>
         </div>
       </section>
-
-      {/* Support Requests Section */}
-      <section className="py-20 bg-gradient-to-br from-primary/5 via-background to-secondary/5">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="max-w-3xl mx-auto text-center mb-16"
-          >
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/10 px-6 py-2">
-              <DollarSign className="h-5 w-5 text-primary" />
-              <span className="text-sm font-medium text-primary">Kêu gọi hỗ trợ</span>
-            </div>
-            <h2 className="healthcare-heading text-4xl font-bold mb-4">
-              Yêu Cầu Hỗ Trợ Cần Ủng Hộ
-            </h2>
-            <p className="text-xl text-muted-foreground">
-              Cùng chung tay giúp đỡ những bệnh nhân cần hỗ trợ tài chính để vượt qua khó khăn và tiếp tục điều trị.
-            </p>
-          </motion.div>
-
-          {assistanceLoading ? (
-            <div className="text-center text-muted-foreground">Đang tải yêu cầu hỗ trợ...</div>
-          ) : assistanceError ? (
-            <div className="text-center text-red-500">{assistanceError}</div>
-          ) : assistanceRequests.length === 0 ? (
-            <div className="text-center text-muted-foreground">Hiện chưa có yêu cầu hỗ trợ nào.</div>
-          ) : (
-            <div className="max-w-7xl mx-auto px-2">
-              <div className="relative max-w-6xl mx-auto">
-                {/* Nút Previous */}
-                {currentIndex > 0 && (
-                  <button
-                    onClick={() => setCurrentIndex((prev) => Math.max(prev - 3, 0))}
-                    className="absolute -left-12 top-1/2 transform -translate-y-1/2 bg-primary/10 hover:bg-primary/20 text-primary p-2 rounded-full shadow-md transition z-10"
-                  >
-                    <ChevronLeft className="h-6 w-6" />
-                  </button>
-                )}
-
-                {/* Grid hiển thị 3 yêu cầu */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {assistanceRequests
-                    .slice(currentIndex, currentIndex + 3)
-                    .map((request, index) => (
-                      <motion.div
-                        key={request._id}
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ delay: index * 0.1 }}
-                        className="group"
-                      >
-                        {/* CARD CÓ THỂ NHẤN → VÀO TRANG CHI TIẾT */}
-                        <div
-                          className="cursor-pointer"
-                          onClick={() => navigate(`/assistance/${request._id}`)}
-                        >
-                          <Card className="healthcare-card h-full group-hover:shadow-2xl group-hover:border-primary transition-all duration-300 border-2">
-                            <CardContent className="pt-6">
-                              <div className="flex items-center justify-between mb-4">
-                                <div>
-                                  <h3 className="font-bold text-lg group-hover:text-primary transition-colors">
-                                    {request.patientId.userId.fullName}
-                                  </h3>
-                                  <div className="text-sm text-muted-foreground">
-                                    <p>
-                                      Tuổi: {request.patientId?.userId?.profile?.dateOfBirth
-                                        ? calculateAge(request.patientId.userId.profile.dateOfBirth)
-                                        : 'N/A'}
-                                    </p>
-                                    <p>
-                                      Địa chỉ: {request.patientId?.userId?.profile?.address || 'Chưa cung cấp'}
-                                    </p>
-                                  </div>
-                                </div>
-                                <Badge
-                                  variant={
-                                    request.urgency === 'critical' ? 'destructive' :
-                                      request.urgency === 'high' ? 'default' :
-                                        request.urgency === 'medium' ? 'secondary' : 'outline'
-                                  }
-                                >
-                                  {request.urgency === 'critical' ? 'Khẩn cấp' :
-                                    request.urgency === 'high' ? 'Cao' :
-                                      request.urgency === 'medium' ? 'Trung bình' : 'Thấp'}
-                                </Badge>
-                              </div>
-
-                              <p
-                                className="text-sm text-primary font-semibold mb-2"
-                                style={{
-                                  display: '-webkit-box',
-                                  WebkitLineClamp: 2,
-                                  WebkitBoxOrient: 'vertical',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  lineHeight: '1.4',
-                                  maxHeight: '2.8em', // 2 dòng × line-height
-                                  whiteSpace: 'normal',
-                                }}
-                              >
-                                {request.medicalCondition}
-                              </p>
-                              <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{request.description}</p>
-
-                              <div className="mb-4">
-                                <div className="flex justify-between text-sm mb-2">
-                                  <span>Số tiền cần:</span>
-                                  <span className="font-semibold">{formatVND(request.requestedAmount)}</span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2.5">
-                                  <div
-                                    className="bg-gradient-to-r from-primary to-secondary h-2.5 rounded-full transition-all duration-500"
-                                    style={{ width: `${Math.min((request.raisedAmount / request.requestedAmount) * 100, 100)}%` }}
-                                  />
-                                </div>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                  Đã quyên góp: {((request.raisedAmount / request.requestedAmount) * 100).toFixed(0)}%
-                                </p>
-                              </div>
-
-                              {/* NÚT ỦNG HỘ NHANH – NGĂN CHUYỂN TRANG */}
-                              <div
-                                onClick={(e) => e.stopPropagation()}
-                                className="mt-4"
-                              >
-                                <Button
-                                  className="bg-red-500 text-white hover:bg-red-600 w-full"
-                                  onClick={() => setSelectedAssistanceId(request._id)}
-                                >
-                                  Ủng hộ ngay
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </div>
-                      </motion.div>
-                    ))}
-                </div>
-
-                {/* Nút Next */}
-                {currentIndex + 3 < assistanceRequests.length && (
-                  <button
-                    onClick={() =>
-                      setCurrentIndex((prev) =>
-                        Math.min(prev + 3, assistanceRequests.length - 3)
-                      )
-                    }
-                    className="absolute -right-12 top-1/2 transform -translate-y-1/2 bg-primary/10 hover:bg-primary/20 text-primary p-2 rounded-full shadow-md transition z-10"
-                  >
-                    <ChevronRight className="h-6 w-6" />
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Nút xem thêm */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.6 }}
-            className="mt-12 text-center"
-          >
-            <Button
-              size="lg"
-              onClick={() => navigate('/support-requests')}
-            >
-              Xem thêm yêu cầu hỗ trợ
-            </Button>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Bus Partners Section */}
-      <section className="py-20 bg-gradient-to-br from-primary/10 via-background to-secondary/10">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="max-w-5xl mx-auto text-center mb-16"
-          >
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/10 px-6 py-3 border border-primary/20">
-              <Bus className="h-5 w-5 text-primary" />
-              <span className="text-sm font-semibold text-primary">Hợp tác vận chuyển</span>
-            </div>
-            <h2 className="healthcare-heading text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Các nhà xe hợp tác
-            </h2>
-            <p className="text-xl text-muted-foreground leading-relaxed">
-              Chúng tôi đã liên hệ hợp tác với các nhà xe uy tín để hỗ trợ bệnh nhân và người nhà di chuyển. Khi đặt xe, bạn sẽ được 1 vé miễn phí, chi phí còn lại sẽ được tính toán và hỗ trợ bởi MedicalHope+.
-            </p>
-          </motion.div>
-
-          {loading ? (
-            <div className="text-center text-muted-foreground">Đang tải dữ liệu...</div>
-          ) : error ? (
-            <div className="text-center text-red-500">{error}</div>
-          ) : busPartners.length === 0 ? (
-            <div className="text-center text-muted-foreground">Hiện chưa có đối tác vận chuyển nào.</div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-              {busPartners.slice(0, 6).map((partner, index) => (
-                <motion.div
-                  key={partner._id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.3, delay: index * 0.1 }}
-                  className="group"
-                >
-                  <div
-                    className="cursor-pointer p-6 bg-background rounded-2xl border-2 border-primary/10 shadow-lg 
-                         group-hover:shadow-2xl group-hover:border-primary group-hover:bg-orange-50 
-                         transition-all duration-300"
-                  >
-                    <div className="flex flex-col items-center text-center">
-                      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-md overflow-hidden group-hover:scale-110 transition-transform duration-300">
-                        <img
-                          src={
-                            partner.logo
-                              ? (partner.logo.startsWith('http') ? partner.logo : `${API_SERVER}${partner.logo}`)
-                              : '/default-logo.png'
-                          }
-                          alt={partner.name}
-                          className="h-12 w-12 object-contain"
-                        />
-                      </div>
-                      <p className="text-lg font-semibold mb-2 group-hover:text-primary transition-colors">
-                        {partner.name}
-                      </p>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        SĐT: {partner.details?.phone || 'Chưa cung cấp'}
-                      </p>
-                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                        {partner.details?.description || 'Hỗ trợ vận chuyển cho bệnh nhân và người nhà.'}
-                      </p>
-                      {partner.website && (
-                        <a
-                          href={partner.website}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-sm text-orange-500 hover:text-orange-600 font-medium transition-opacity duration-300"
-                        >
-                          Tìm hiểu thêm
-                          <ExternalLink className="h-4 w-4" />
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          )}
-
-          <div className="mt-12 text-center">
-            <Button
-              size="lg"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-white font-medium shadow-md hover:shadow-lg hover:bg-primary/90 transition-all duration-300"
-              onClick={() => navigate('/transport')}
-            >
-              Xem thêm nhà xe
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* Food Distribution Points Section */}
-      <section className="py-20 bg-background">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="max-w-5xl mx-auto text-center mb-16"
-          >
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/10 px-6 py-3 border border-primary/20">
-              <Soup className="h-5 w-5 text-primary" />
-              <span className="text-sm font-semibold text-primary">Hỗ trợ dinh dưỡng</span>
-            </div>
-            <h2 className="healthcare-heading text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Các điểm phát đồ ăn
-            </h2>
-            <p className="text-xl text-muted-foreground leading-relaxed">
-              Chúng tôi liên hệ với các tổ chức và mạnh thường quân chuyên nấu ăn để lên lịch phát đồ ăn miễn phí. Bệnh nhân và người nhà có thể nắm lịch trình cụ thể hàng ngày, tuần, tháng tại các địa điểm sau.
-            </p>
-          </motion.div>
-
-          {loading ? (
-            <div className="text-center text-muted-foreground">Đang tải dữ liệu...</div>
-          ) : error ? (
-            <div className="text-center text-red-500">{error}</div>
-          ) : foodDistributionPoints.length === 0 ? (
-            <div className="text-center text-muted-foreground">Hiện chưa có điểm phát đồ ăn nào.</div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-              {foodDistributionPoints.slice(0, 6).map((point, index) => (
-                <motion.div
-                  key={point._id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.3, delay: index * 0.1 }}
-                  className="group"
-                >
-                  <div
-                    className="cursor-pointer p-6 bg-background rounded-2xl border-2 border-primary/10 shadow-lg 
-                         group-hover:shadow-2xl group-hover:border-primary group-hover:bg-orange-50 
-                         transition-all duration-300"
-                  >
-                    <div className="flex flex-col items-center text-center">
-                      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-md overflow-hidden group-hover:scale-110 transition-transform duration-300">
-                        <img
-                          src={
-                            point.logo
-                              ? (point.logo.startsWith('http') ? point.logo : `${API_SERVER}${point.logo}`)
-                              : '/default-logo.png'
-                          }
-                          alt={point.name}
-                          className="h-12 w-12 object-contain"
-                          onError={(e) => {
-                            e.currentTarget.src = '/default-logo.png';
-                          }}
-                        />
-                      </div>
-                      <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
-                        {point.details?.location || 'Chưa cung cấp địa điểm'}
-                      </h3>
-                      <p className="text-sm text-muted-foreground mb-2">Lịch: {point.details?.schedule || 'Chưa cung cấp lịch'}</p>
-                      <p className="text-sm text-muted-foreground mb-2">Tổ chức: {point.details?.organizer || 'Chưa cung cấp tổ chức'}</p>
-                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                        {point.details?.description || 'Phát đồ ăn miễn phí cho bệnh nhân và người nhà.'}
-                      </p>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          )}
-
-          <div className="mt-12 text-center">
-            <a
-              href="/food-distribution"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-white font-medium shadow-md hover:shadow-lg hover:bg-primary/90 transition-all duration-300"
-            >
-              Xem nhiều hơn
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {/* Partners Section */}
-      <section className="py-20 bg-gradient-to-br from-primary/10 via-background to-secondary/10">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="max-w-5xl mx-auto text-center mb-16"
-          >
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/10 px-6 py-3 border border-primary/20">
-              <Building2 className="h-5 w-5 text-primary" />
-              <span className="text-sm font-semibold text-primary">Đối tác của chúng tôi</span>
-            </div>
-            <h2 className="healthcare-heading text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Cùng Nhau Tạo Nên Thay Đổi
-            </h2>
-            <p className="text-xl text-muted-foreground leading-relaxed">
-              Chúng tôi tự hào hợp tác với các tổ chức y tế và từ thiện hàng đầu để mang lại dịch vụ y tế chất lượng nhất cho cộng đồng.
-            </p>
-          </motion.div>
-
-          {loading ? (
-            <div className="text-center text-muted-foreground">Đang tải dữ liệu đối tác...</div>
-          ) : error ? (
-            <div className="text-center text-red-500">{error}</div>
-          ) : partnersFromDB.length === 0 ? (
-            <div className="text-center text-muted-foreground">Hiện chưa có đối tác nào được thêm.</div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 max-w-8xl mx-auto">
-              {partnersFromDB.slice(0, 10).map((partner, index) => (
-                <motion.div
-                  key={partner._id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.3, delay: index * 0.1 }}
-                  className="group relative"
-                >
-                  <div
-                    className="cursor-pointer p-6 bg-background rounded-2xl border-2 border-primary/10 shadow-lg 
-                         group-hover:shadow-2xl group-hover:border-primary group-hover:bg-orange-50 
-                         transition-all duration-300"
-                  >
-                    <div className="flex flex-col items-center text-center">
-                      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-md overflow-hidden group-hover:scale-110 transition-transform duration-300">
-                        <img
-                          src={
-                            partner.logo
-                              ? (partner.logo.startsWith('http') ? partner.logo : `${API_SERVER}${partner.logo}`)
-                              : '/default-logo.png'
-                          }
-                          alt={partner.name}
-                          className="h-12 w-12 object-contain"
-                          onError={(e) => {
-                            e.currentTarget.src = '/default-logo.png';
-                          }}
-                        />
-                      </div>
-
-                      {/* Tên đối tác - cắt giữa, 1 dòng, hover hiện full */}
-                      <div className="relative w-full px-2">
-                        <p
-                          className="text-[15px] font-semibold text-foreground line-clamp-1 text-center group-hover:text-primary transition-colors"
-                        >
-                          {partner.name.length > 20
-                            ? `${partner.name.slice(0, 8)}...${partner.name.slice(-8)}`
-                            : partner.name}
-                        </p>
-
-                        {/* Tooltip khi hover */}
-                        {partner.name.length > 20 && (
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 whitespace-nowrap z-10">
-                            {partner.name}
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-0 h-0 border-4 border-transparent border-t-gray-900"></div>
-                          </div>
-                        )}
-                      </div>
-
-                      <p className="text-sm text-muted-foreground mb-2">{partner.category}</p>
-                      {partner.website && (
-                        <a
-                          href={partner.website}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-sm text-orange-500 hover:text-orange-600 font-medium transition-opacity duration-300"
-                        >
-                          Tìm hiểu thêm
-                          <ExternalLink className="h-4 w-4" />
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          )}
-
-          <div className="mt-12 text-center">
-            <Button
-              size="lg"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-white font-medium shadow-md hover:shadow-lg hover:bg-primary/90 transition-all duration-300"
-              onClick={() => navigate('/organizations')}
-            >
-              Xem thêm đối tác
-            </Button>
-          </div>
-        </div>
-      </section>
-
       <Footer />
       <ChatBubble />
       <ScrollToTop />

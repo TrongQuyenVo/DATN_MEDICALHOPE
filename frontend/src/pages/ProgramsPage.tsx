@@ -1,152 +1,264 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// src/pages/ProgramsPage.tsx
+'use client';
+
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Heart, Users, Calendar, MapPin, ArrowRight } from 'lucide-react';
+import { Heart, Users, Calendar, MapPin, ArrowRight, Sparkles, Clock, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
-import volunteerCampImg from '@/assets/volunteerCampImg.jpg';
-import charityDistImg from '@/assets/charity-distribution.jpg';
-import childrenHealthImg from '@/assets/children-health-checkup.jpg';
-import elderlyCarelImg from '@/assets/Khamsuckhoevungcao.png';
-import pediatricCareImg from '@/assets/pediatric-care.jpg';
-import communityHealthImg from '@/assets/community-health.jpg';
 import Header from '@/components/layout/NavHeader';
 import Footer from '@/components/layout/Footer';
 import ScrollToTop from '@/components/layout/ScrollToTop';
 import ChatBubble from './ChatbotPage';
+import { eventsAPI } from '@/lib/api';
+import toast from 'react-hot-toast';
+
+const API_SERVER = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/api\/?$/, '');
+
+interface Event {
+  _id: string;
+  title: string;
+  description: string;
+  location: string;
+  startDate: string;
+  endDate?: string;
+  organizer: string;
+  participants?: number;
+  target?: number;
+  image?: string;
+  isActive: boolean;
+}
 
 export default function ProgramsPage() {
   const navigate = useNavigate();
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const programs = [
-    {
-      title: 'Mổ tim cho trẻ em nghèo',
-      description: 'Phẫu thuật tim bẩm sinh miễn phí cho trẻ em có hoàn cảnh khó khăn. Chương trình đã cứu sống hàng trăm trẻ em với bệnh tim bẩm sinh.',
-      beneficiaries: '500+ ca phẫu thuật thành công',
-      location: 'Bệnh viện Tim Hà Nội & TP.HCM',
-      duration: 'Hoạt động liên tục từ 2018',
-      status: 'Đang hoạt động',
-      image: pediatricCareImg
-    },
-    {
-      title: 'Chăm sóc người cao tuổi',
-      description: 'Khám và tặng quà cho người cao tuổi tại các vùng sâu, vùng xa. Mang yêu thương đến với những người già neo đơn.',
-      beneficiaries: '10,000+ người được hỗ trợ',
-      location: 'Các tỉnh miền núi phía Bắc',
-      duration: 'Hàng tháng',
-      status: 'Đang hoạt động',
-      image: elderlyCarelImg
-    },
-    {
-      title: 'Khám sức khỏe cộng đồng',
-      description: 'Tổ chức các ngày khám bệnh miễn phí tại cộng đồng, mang y tế đến tận nhà cho người dân vùng sâu vùng xa.',
-      beneficiaries: '15,000+ lượt khám/năm',
-      location: 'Toàn quốc',
-      duration: 'Định kỳ hàng tháng',
-      status: 'Đang hoạt động',
-      image: volunteerCampImg
-    },
-    {
-      title: 'Hỗ trợ dinh dưỡng trẻ em',
-      description: 'Cung cấp sữa và thực phẩm dinh dưỡng cho trẻ em suy dinh dưỡng tại các vùng khó khăn.',
-      beneficiaries: '8,000+ trẻ em được hỗ trợ',
-      location: 'Các tỉnh Tây Nguyên',
-      duration: 'Hàng quý',
-      status: 'Đang hoạt động',
-      image: charityDistImg
-    },
-    {
-      title: 'Khám mắt & Tặng kính',
-      description: 'Khám mắt miễn phí và tặng kính cho học sinh nghèo, giúp các em có điều kiện học tập tốt hơn.',
-      beneficiaries: '12,000+ em học sinh',
-      location: 'Các tỉnh miền Trung',
-      duration: 'Mỗi kỳ học',
-      status: 'Đang hoạt động',
-      image: childrenHealthImg
-    },
-    {
-      title: 'Chăm sóc sức khỏe sinh sản',
-      description: 'Tư vấn và khám sức khỏe sinh sản miễn phí cho phụ nữ vùng cao, nâng cao nhận thức về chăm sóc sức khỏe.',
-      beneficiaries: '5,000+ phụ nữ',
-      location: 'Các tỉnh vùng cao',
-      duration: 'Hàng quý',
-      status: 'Đang hoạt động',
-      image: communityHealthImg
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await eventsAPI.getAll();
+        const allEvents = (res.data || []) as Event[];
+
+        // Sắp xếp: đang diễn ra → sắp tới → đã kết thúc
+        const now = new Date();
+        const sortedEvents = allEvents
+          .filter((e: Event) => e.isActive !== false)
+          .sort((a: Event, b: Event) => {
+            const aStart = new Date(a.startDate);
+            const bStart = new Date(b.startDate);
+            const aEnd = a.endDate ? new Date(a.endDate) : aStart;
+            const bEnd = b.endDate ? new Date(b.endDate) : bStart;
+
+            const aOngoing = aStart <= now && aEnd >= now;
+            const bOngoing = bStart <= now && bEnd >= now;
+
+            if (aOngoing && !bOngoing) return -1;
+            if (!aOngoing && bOngoing) return 1;
+            return aStart.getTime() - bStart.getTime();
+          });
+
+        setEvents(sortedEvents);
+      } catch (err: any) {
+        const msg = err?.response?.data?.message || 'Không tải được danh sách chương trình';
+        setError(msg);
+        toast.error(msg);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, []);
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  const getStatusBadge = (event: Event) => {
+    const now = new Date();
+    const start = new Date(event.startDate);
+    const end = event.endDate ? new Date(event.endDate) : start;
+
+    const isOngoing = start <= now && end >= now;
+    const isUpcoming = start > now;
+    const isEnded = end < now;
+
+    if (isOngoing) {
+      return <Badge className="bg-orange-500 text-white"><Sparkles className="h-3 w-3 mr-1" />Đang diễn ra</Badge>;
     }
-  ];
+    if (isUpcoming) {
+      return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Sắp tới</Badge>;
+    }
+    if (isEnded) {
+      return <Badge variant="outline"><CheckCircle2 className="h-3 w-3 mr-1" />Đã kết thúc</Badge>;
+    }
+    return null;
+  };
 
   return (
     <div className="min-h-screen bg-background pt-16">
       <Header />
+
       <div className="container mx-auto px-4 py-12">
+        {/* Hero Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="max-w-4xl mx-auto mb-12 text-center"
         >
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/10 px-6 py-2">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/10 px-6 py-3">
             <Heart className="h-5 w-5 text-primary" />
             <span className="text-sm font-medium text-primary">Hoạt động từ thiện</span>
           </div>
-          <h2 className="text-4xl font-bold mb-4">Các Chương Trình Đang Triển Khai</h2>
-          <p className="text-xl text-muted-foreground">
-            Những hoạt động từ thiện y tế thực tế đang được thực hiện trên toàn quốc
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">
+            Các Chương Trình Đang Triển Khai
+          </h1>
+          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+            Cùng MedicalHope+ lan tỏa yêu thương qua những hoạt động y tế thiện nguyện ý nghĩa trên khắp Việt Nam
           </p>
         </motion.div>
 
-        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-          {programs.map((program, index) => (
-            <motion.div
-              key={program.title}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-            >
-              <Card className="healthcare-card h-full overflow-hidden">
-                <div className="relative h-48 overflow-hidden">
-                  <img
-                    src={program.image}
-                    alt={program.title}
-                    className="h-full w-full object-cover transition-transform duration-300 hover:scale-110"
-                  />
-                  <Badge className="absolute top-4 right-4 bg-success text-success-foreground">
-                    {program.status}
-                  </Badge>
-                </div>
-                <CardHeader>
-                  <CardTitle className="text-lg">{program.title}</CardTitle>
-                  <CardDescription>{program.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-start gap-2 text-sm">
-                    <Users className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                    <span>{program.beneficiaries}</span>
-                  </div>
-                  <div className="flex items-start gap-2 text-sm">
-                    <MapPin className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                    <span>{program.location}</span>
-                  </div>
-                  <div className="flex items-start gap-2 text-sm">
-                    <Calendar className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                    <span>{program.duration}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
+        {/* Loading */}
+        {loading && (
+          <div className="text-center py-20">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+            <p className="mt-4 text-muted-foreground">Đang tải các chương trình...</p>
+          </div>
+        )}
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-          className="mt-12 text-center"
-        >
-          <Button size="lg" className="btn-charity" onClick={() => navigate('/register')}>
-            Tham gia ngay
-          </Button>
-        </motion.div>
+        {/* Error */}
+        {error && (
+          <div className="text-center py-20">
+            <div className="mx-auto w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mb-4">
+              <Heart className="h-12 w-12 text-red-500" />
+            </div>
+            <p className="text-lg text-red-600">{error}</p>
+          </div>
+        )}
+
+        {/* Empty */}
+        {!loading && !error && events.length === 0 && (
+          <div className="text-center py-20">
+            <div className="mx-auto w-32 h-32 bg-orange-100 rounded-full flex items-center justify-center mb-6">
+              <Calendar className="h-16 w-16 text-orange-400" />
+            </div>
+            <p className="text-xl text-muted-foreground">Hiện chưa có chương trình nào được công bố.</p>
+            <p className="text-sm text-muted-foreground mt-2">Hãy quay lại sau nhé!</p>
+          </div>
+        )}
+
+        {/* Danh sách chương trình từ DB */}
+        {!loading && events.length > 0 && (
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {events.map((event, index) => (
+              <motion.div
+                key={event._id}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className="group"
+              >
+                <Card
+                  className="h-full overflow-hidden border-2 transition-all duration-300 
+                           hover:shadow-2xl hover:border-primary cursor-pointer"
+                  onClick={() => navigate(`/events/${event._id}`)}
+                >
+                  <div className="relative h-48 overflow-hidden bg-gray-100">
+                    <img
+                      src={event.image ? `${API_SERVER}${event.image}` : '/images/default-event.jpg'}
+                      alt={event.title}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      onError={(e) => {
+                        e.currentTarget.src = '/images/default-event.jpg';
+                      }}
+                    />
+                    <div className="absolute top-4 right-4">
+                      {getStatusBadge(event)}
+                    </div>
+                  </div>
+
+                  <CardHeader>
+                    <CardTitle className="text-lg line-clamp-2 group-hover:text-primary transition-colors">
+                      {event.title}
+                    </CardTitle>
+                    <CardDescription className="line-clamp-3">
+                      {event.description}
+                    </CardDescription>
+                  </CardHeader>
+
+                  <CardContent className="space-y-3 text-sm">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Calendar className="h-4 w-4 text-primary flex-shrink-0" />
+                      <span>
+                        {formatDate(event.startDate)}
+                        {event.endDate && ` → ${formatDate(event.endDate)}`}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
+                      <span className="truncate">{event.location}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Users className="h-4 w-4 text-primary flex-shrink-0" />
+                      <span>
+                        {event.participants || 0} / {event.target || '?'} người tham gia
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Heart className="h-4 w-4 text-primary flex-shrink-0" />
+                      <span>{event.organizer}</span>
+                    </div>
+                  </CardContent>
+
+                  <div className="p-4 border-t bg-gray-50">
+                    <Button
+                      variant="outline"
+                      className="w-full group-hover:bg-primary group-hover:text-white transition-all"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/events/${event._id}`);
+                      }}
+                    >
+                      Xem chi tiết
+                      <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                    </Button>
+                  </div>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        )}
+
+        {/* Nút tham gia */}
+        {!loading && events.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+            className="mt-16 text-center"
+          >
+            <Button size="lg" className="btn-charity" onClick={() => navigate('/register')}>
+              Tham gia cùng chúng tôi
+              <Heart className="ml-2 h-5 w-5" />
+            </Button>
+          </motion.div>
+        )}
       </div>
+
       <Footer />
       <ScrollToTop />
       <ChatBubble />

@@ -56,6 +56,8 @@ export function Sidebar({ className }: SidebarProps) {
         { path: '/donations', icon: Gift, label: t('donations') },
         { path: '/assistance', icon: HandHeart, label: t('assistance') },
         { path: '/partners', icon: Building2, label: 'Quản lý đối tác' },
+        { path: '/packages', icon: Gift, label: 'Quản lý gói khám miễn phí' },
+        { path: '/events', icon: Calendar, label: 'Quản lý sự kiện & hoạt động' },
         { path: '/testimonials', icon: Heart, label: 'Quản lý đánh giá' },
         { path: '/analytics', icon: BarChart3, label: 'Thống kê' },
       ],

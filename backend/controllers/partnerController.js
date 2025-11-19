@@ -18,7 +18,22 @@ const createPartner = [
   upload.single("logo"),
   async (req, res) => {
     try {
-      const { name, type, category, website, details, isActive } = req.body;
+      const {
+        name,
+        type,
+        category,
+        website,
+        isActive,
+        phone,
+        description,
+        location,
+        schedule,
+        organizer,
+        departure,
+        destination,
+        email,
+        activities,
+      } = req.body;
 
       // Basic validation
       if (!name || !type || !category) {
@@ -29,16 +44,34 @@ const createPartner = [
 
       // Validate type
       const validTypes = [
-        "hospital",
-        "charity",
-        "international_organization",
-        "association",
         "transportation",
         "food_distribution",
+        "organization",
       ];
       if (!validTypes.includes(type)) {
         return res.status(400).json({ message: "Loại không hợp lệ" });
       }
+
+      // Xử lý activities nếu có
+      let activitiesArray = [];
+      if (activities) {
+        activitiesArray = activities
+          .split(",")
+          .map((item) => item.trim())
+          .filter((item) => item);
+      }
+
+      const details = {
+        ...(phone && { phone }),
+        ...(description && { description }),
+        ...(location && { location }),
+        ...(schedule && { schedule }),
+        ...(organizer && { organizer }),
+        ...(departure && { departure }),
+        ...(destination && { destination }),
+        ...(email && { email }),
+        ...(activitiesArray.length > 0 && { activities: activitiesArray }),
+      };
 
       const partner = new Partner({
         name,
@@ -46,7 +79,7 @@ const createPartner = [
         category,
         website,
         logo: req.file ? `/uploads/${req.file.filename}` : undefined,
-        details: details ? JSON.parse(details) : {},
+        details,
         isActive: isActive === "true",
       });
 
@@ -64,17 +97,29 @@ const updatePartner = [
   async (req, res) => {
     try {
       const { id } = req.params;
-      const { name, type, category, website, details, isActive } = req.body;
+      const {
+        name,
+        type,
+        category,
+        website,
+        isActive,
+        phone,
+        description,
+        location,
+        schedule,
+        organizer,
+        departure,
+        destination,
+        email,
+        activities,
+      } = req.body;
 
       // Validate type if provided
       if (type) {
         const validTypes = [
-          "hospital",
-          "charity",
-          "international_organization",
-          "association",
           "transportation",
           "food_distribution",
+          "organization",
         ];
         if (!validTypes.includes(type)) {
           return res.status(400).json({ message: "Loại không hợp lệ" });
@@ -86,13 +131,34 @@ const updatePartner = [
         return res.status(404).json({ message: "Không tìm thấy đối tác" });
       }
 
+      // Xử lý activities nếu có
+      let activitiesArray = [];
+      if (activities) {
+        activitiesArray = activities
+          .split(",")
+          .map((item) => item.trim())
+          .filter((item) => item);
+      }
+
+      const details = {
+        ...(phone && { phone }),
+        ...(description && { description }),
+        ...(location && { location }),
+        ...(schedule && { schedule }),
+        ...(organizer && { organizer }),
+        ...(departure && { departure }),
+        ...(destination && { destination }),
+        ...(email && { email }),
+        ...(activitiesArray.length > 0 && { activities: activitiesArray }),
+      };
+
       // Update fields if provided
       if (name) partner.name = name;
       if (type) partner.type = type;
       if (category) partner.category = category;
       if (website) partner.website = website;
       if (req.file) partner.logo = `/uploads/${req.file.filename}`;
-      if (details) partner.details = JSON.parse(details);
+      if (details) partner.details = details;
       if (isActive !== undefined) partner.isActive = isActive === "true";
 
       await partner.save();
@@ -134,7 +200,6 @@ const getPartnerById = async (req, res) => {
   }
 };
 
-// Get all partners with optional filtering
 // Get all partners with pagination
 const getAllPartners = async (req, res) => {
   try {
