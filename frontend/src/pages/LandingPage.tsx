@@ -875,277 +875,264 @@ export default function LandingPage() {
           </motion.div>
         </div>
       </section>
-      {/* Bus Partners Section */}
-      <section className="py-20 bg-gradient-to-br from-primary/10 via-background to-secondary/10">
+      {/* ==================== NHÀ XE 0 ĐỒNG – ẢNH TRÊN, NỘI DUNG DƯỚI ==================== */}
+      <section className="py-20 bg-gradient-to-b from-orange-50 to-background">
         <div className="container mx-auto px-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="max-w-5xl mx-auto text-center mb-16"
+            className="text-center mb-16"
           >
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/10 px-6 py-2 text-primary">
-              <Bus className="h-5 w-5" />
-              <span className="text-sm font-medium">Hợp tác vận chuyển</span>
+            <div className="inline-flex items-center gap-3 rounded-full bg-orange-100 px-6 py-3 mb-6">
+              <Bus className="h-6 w-6 text-orange-600" />
+              <span className="font-bold text-orange-600 text-lg">ĐỘI XE THIỆN NGUYỆN 0 ĐỒNG</span>
             </div>
-            <h2 className="healthcare-heading text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Các đội xe thiện nguyện
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+              Đưa Bệnh Nhân Nghèo Về Với Gia Đình
             </h2>
-            <p className="text-xl text-muted-foreground leading-relaxed">
-              Chúng tôi đã liên hệ hợp tác với các nhà xe uy tín để hỗ trợ bệnh nhân và người nhà di chuyển. Khi đặt xe, bạn sẽ được 1 vé miễn phí, chi phí còn lại sẽ được tính toán và hỗ trợ bởi MedicalHope+.
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              Hàng trăm chuyến xe miễn phí mỗi năm – không để ai phải nằm lại bệnh viện vì không có tiền về quê.
             </p>
           </motion.div>
-          {loading ? (
-            <div className="text-center text-muted-foreground">Đang tải dữ liệu...</div>
-          ) : error ? (
-            <div className="text-center text-red-500">{error}</div>
-          ) : busPartners.length === 0 ? (
-            <div className="text-center text-muted-foreground">Hiện chưa có đối tác vận chuyển nào.</div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-              {busPartners.slice(0, 6).map((partner, index) => (
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+            {busPartners.slice(0, 6).map((partner, i) => {
+              const img = partner.logo
+                ? (partner.logo.startsWith('http') ? partner.logo : `${API_SERVER}${partner.logo}`)
+                : "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&h=500&fit=crop";
+
+              return (
                 <motion.div
                   key={partner._id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 0.3, delay: index * 0.1 }}
+                  transition={{ delay: i * 0.1 }}
                   className="group"
                 >
-                  <div
-                    className="cursor-pointer p-6 bg-background rounded-2xl rounded-2xl border-2 border-primary/10 shadow-lg
-                       group-hover:shadow-2xl group-hover:border-primary group-hover:bg-orange-50
-                       transition-all duration-300"
-                  >
-                    <div className="flex flex-col items-center text-center">
-                      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-md overflow-hidden group-hover:scale-110 transition-transform duration-300">
-                        <img
-                          src={
-                            partner.logo
-                              ? (partner.logo.startsWith('http') ? partner.logo : `${API_SERVER}${partner.logo}`)
-                              : '/default-logo.png'
-                          }
-                          alt={partner.name}
-                          className="h-12 w-12 object-contain"
-                        />
-                      </div>
-                      <p className="text-lg font-semibold mb-2 group-hover:text-primary transition-colors">
-                        {partner.name}
-                      </p>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        SĐT: {partner.details?.phone || 'Chưa cung cấp'}
-                      </p>
-                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                        {partner.details?.description || 'Hỗ trợ vận chuyển cho bệnh nhân và người nhà.'}
-                      </p>
-                      {partner.website && (
-                        <a
-                          href={partner.website}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-sm text-orange-500 hover:text-orange-600 font-medium transition-opacity duration-300"
-                        >
-                          Tìm hiểu thêm
-                          <ExternalLink className="h-4 w-4" />
-                        </a>
-                      )}
+                  <Card className="overflow-hidden rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 border-0">
+                    {/* ẢNH Ở TRÊN */}
+                    <div className="h-56 relative overflow-hidden">
+                      <img
+                        src={img}
+                        alt={partner.name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                        onError={(e) => e.currentTarget.src = "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&h=500&fit=crop"}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                      <Badge className="absolute bottom-4 left-4 bg-orange-600 text-white shadow-lg">
+                        Miễn phí 100%
+                      </Badge>
                     </div>
-                  </div>
+
+                    {/* NỘI DUNG Ở DƯỚI */}
+                    <CardContent className="p-6 bg-white">
+                      <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-orange-600 transition-colors">
+                        {partner.name}
+                      </h3>
+
+                      {partner.details?.description && (
+                        <p className="text-muted-foreground text-sm leading-relaxed mb-4 line-clamp-2">
+                          {partner.details.description}
+                        </p>
+                      )}
+
+                      <div className="space-y-3 text-sm">
+                        {partner.details?.location && (
+                          <div className="flex items-center gap-2 text-gray-700">
+                            <MapPin className="h-4 w-4 text-orange-500" />
+                            <span>{partner.details.location}</span>
+                          </div>
+                        )}
+                        {partner.details?.phone && (
+                          <div className="flex items-center gap-2 text-gray-700">
+                            <Phone className="h-4 w-4 text-green-600" />
+                            <span className="font-medium">{partner.details.phone}</span>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
                 </motion.div>
-              ))}
-            </div>
-          )}
-          <div className="mt-12 text-center">
-            <Button
-              size="lg"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-white font-medium shadow-md hover:shadow-lg hover:bg-primary/90 transition-all duration-300"
-              onClick={() => navigate('/transport')}
-            >
-              Xem thêm
+              );
+            })}
+          </div>
+
+          <div className="text-center mt-16">
+            <Button size="lg" className="rounded-full px-10" onClick={() => navigate('/transport')}>
+              Xem tất cả nhà xe
+              <ArrowRight className="ml-3 h-5 w-5" />
             </Button>
           </div>
         </div>
       </section>
-      {/* Food Distribution Points Section */}
-      <section className="py-20 bg-background">
+
+      {/* ==================== ĐIỂM PHÁT ĐỒ ĂN – ẢNH TRÊN, NỘI DUNG DƯỚI ==================== */}
+      <section className="py-20 bg-gradient-to-b from-green-50 to-background">
         <div className="container mx-auto px-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="max-w-5xl mx-auto text-center mb-16"
+            className="text-center mb-16"
           >
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/10 px-6 py-3 border border-primary/20">
-              <Soup className="h-5 w-5 text-primary" />
-              <span className="text-sm font-semibold text-primary">Hỗ trợ dinh dưỡng</span>
+            <div className="inline-flex items-center gap-3 rounded-full bg-green-100 px-6 py-3 mb-6">
+              <Soup className="h-6 w-6 text-green-600" />
+              <span className="font-bold text-green-600 text-lg">PHÁT ĐỒ ĂN MIỄN PHÍ</span>
             </div>
-            <h2 className="healthcare-heading text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Các điểm phát đồ ăn
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+              Bữa Ăn Ấm Áp Cho Bệnh Nhân & Người Nhà
             </h2>
-            <p className="text-xl text-muted-foreground leading-relaxed">
-              Chúng tôi liên hệ với các tổ chức và mạnh thường quân chuyên nấu ăn để lên lịch phát đồ ăn miễn phí. Bệnh nhân và người nhà có thể nắm lịch trình cụ thể hàng ngày, tuần, tháng tại các địa điểm sau.
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              Hàng ngày, hàng nghìn suất cơm, cháo được trao tận tay tại cổng các bệnh viện lớn.
             </p>
           </motion.div>
-          {loading ? (
-            <div className="text-center text-muted-foreground">Đang tải dữ liệu...</div>
-          ) : error ? (
-            <div className="text-center text-red-500">{error}</div>
-          ) : foodDistributionPoints.length === 0 ? (
-            <div className="text-center text-muted-foreground">Hiện chưa có điểm phát đồ ăn nào.</div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-              {foodDistributionPoints.slice(0, 6).map((point, index) => (
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+            {foodDistributionPoints.slice(0, 6).map((point, i) => {
+              const img = point.logo
+                ? (point.logo.startsWith('http') ? point.logo : `${API_SERVER}${point.logo}`)
+                : "https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=800&h=500&fit=crop";
+
+              return (
                 <motion.div
                   key={point._id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 0.3, delay: index * 0.1 }}
+                  transition={{ delay: i * 0.1 }}
                   className="group"
                 >
-                  <div
-                    className="cursor-pointer p-6 bg-background rounded-2xl rounded-2xl border-2 border-primary/10 shadow-lg
-                       group-hover:shadow-2xl group-hover:border-primary group-hover:bg-orange-50
-                       transition-all duration-300"
-                  >
-                    <div className="flex flex-col items-center text-center">
-                      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-md overflow-hidden group-hover:scale-110 transition-transform duration-300">
-                        <img
-                          src={
-                            point.logo
-                              ? (point.logo.startsWith('http') ? point.logo : `${API_SERVER}${point.logo}`)
-                              : '/default-logo.png'
-                          }
-                          alt={point.name}
-                          className="h-12 w-12 object-contain"
-                          onError={(e) => {
-                            e.currentTarget.src = '/default-logo.png';
-                          }}
-                        />
-                      </div>
-                      <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
-                        {point.details?.location || 'Chưa cung cấp địa điểm'}
-                      </h3>
-                      <p className="text-sm text-muted-foreground mb-2">Lịch: {point.details?.schedule || 'Chưa cung cấp lịch'}</p>
-                      <p className="text-sm text-muted-foreground mb-2">Tổ chức: {point.details?.organizer || 'Chưa cung cấp tổ chức'}</p>
-                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                        {point.details?.description || 'Phát đồ ăn miễn phí cho bệnh nhân và người nhà.'}
-                      </p>
+                  <Card className="overflow-hidden rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 border-0">
+                    <div className="h-56 relative overflow-hidden">
+                      <img
+                        src={img}
+                        alt={point.name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                        onError={(e) => e.currentTarget.src = "https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=800&h=500&fit=crop"}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                      <Badge className="absolute bottom-4 left-4 bg-green-600 text-white shadow-lg">
+                        Hàng ngày
+                      </Badge>
                     </div>
-                  </div>
+
+                    <CardContent className="p-6 bg-white">
+                      <h3 className="text-xl font-bold text-gray-900 mb-3">
+                        {point.details?.location || point.name}
+                      </h3>
+
+                      <div className="space-y-3 text-sm">
+                        {point.details?.schedule && (
+                          <div className="flex items-center gap-2 text-gray-700">
+                            <Clock className="h-4 w-4 text-green-600" />
+                            <span>{point.details.schedule}</span>
+                          </div>
+                        )}
+                        {point.details?.organizer && (
+                          <div className="flex items-center gap-2 text-gray-700">
+                            <Users className="h-4 w-4 text-purple-600" />
+                            <span>{point.details.organizer}</span>
+                          </div>
+                        )}
+                        {point.details?.description && (
+                          <p
+                            className="text-muted-foreground text-sm leading-relaxed mt-3 line-clamp-5"
+                            title={point.details.description} 
+                          >
+                            {point.details.description}
+                          </p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
                 </motion.div>
-              ))}
-            </div>
-          )}
-          <div className="mt-12 text-center">
-            <a
-              href="/food-distribution"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-white font-medium shadow-md hover:shadow-lg hover:bg-primary/90 transition-all duration-300"
-            >
-              Xem nhiều hơn
-            </a>
+              );
+            })}
+          </div>
+
+          <div className="text-center mt-16">
+            <Button size="lg" variant="outline" className="rounded-full px-10 border-green-600 text-green-600 hover:bg-green-50" onClick={() => navigate('/food-distribution')}>
+              Xem tất cả điểm phát đồ ăn
+              <ArrowRight className="ml-3 h-5 w-5" />
+            </Button>
           </div>
         </div>
       </section>
-      {/* Partners Section */}
-      <section className="py-20 bg-gradient-to-br from-primary/10 via-background to-secondary/10">
+
+      {/* ==================== TỔ CHỨC TỪ THIỆN – ẢNH TRÊN, NỘI DUNG DƯỚI ==================== */}
+      <section className="py-20 bg-gradient-to-b from-purple-50 to-background">
         <div className="container mx-auto px-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="max-w-5xl mx-auto text-center mb-16"
+            className="text-center mb-16"
           >
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/10 px-6 py-3 border border-primary/20">
-              <Building2 className="h-5 w-5 text-primary" />
-              <span className="text-sm font-semibold text-primary">Tổ chức từ thiện</span>
+            <div className="inline-flex items-center gap-3 rounded-full bg-purple-100 px-6 py-3 mb-6">
+              <Building2 className="h-6 w-6 text-purple-600" />
+              <span className="font-bold text-purple-600 text-lg">ĐỒNG HÀNH UY TÍN</span>
             </div>
-            <h2 className="healthcare-heading text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Cùng Nhau Tạo Nên Thay Đổi
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+              Những Người Bạn Đồng Hành Của Chúng Tôi
             </h2>
-            <p className="text-xl text-muted-foreground leading-relaxed">
-              Các tổ chức y tế và từ thiện uy tín – những người bạn đồng hành trong hành trình chăm sóc cộng đồng.
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              Các tổ chức từ thiện, quỹ thiện nguyện lớn đã tin tưởng hợp tác cùng MedicalHope+.
             </p>
           </motion.div>
-          {loading ? (
-            <div className="text-center text-muted-foreground">Đang tải dữ liệu đối tác...</div>
-          ) : error ? (
-            <div className="text-center text-red-500">{error}</div>
-          ) : partnersFromDB.length === 0 ? (
-            <div className="text-center text-muted-foreground">Hiện chưa có đối tác nào được thêm.</div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 max-w-8xl mx-auto">
-              {partnersFromDB.slice(0, 10).map((partner, index) => (
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8 max-w-7xl mx-auto">
+            {partnersFromDB.slice(0, 10).map((partner, i) => {
+              const img = partner.logo
+                ? (partner.logo.startsWith('http') ? partner.logo : `${API_SERVER}${partner.logo}`)
+                : "https://images.unsplash.com/photo-1559028006-448665bd7c7f?w=600&h=600&fit=crop";
+
+              return (
                 <motion.div
                   key={partner._id}
                   initial={{ opacity: 0, scale: 0.9 }}
                   whileInView={{ opacity: 1, scale: 1 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 0.3, delay: index * 0.1 }}
-                  className="group relative"
+                  transition={{ delay: i * 0.05 }}
+                  className="group"
                 >
-                  <div
-                    className="cursor-pointer p-6 bg-background rounded-2xl rounded-2xl border-2 border-primary/10 shadow-lg
-                       group-hover:shadow-2xl group-hover:border-primary group-hover:bg-orange-50
-                       transition-all duration-300"
-                  >
-                    <div className="flex flex-col items-center text-center">
-                      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-md overflow-hidden group-hover:scale-110 transition-transform duration-300">
-                        <img
-                          src={
-                            partner.logo
-                              ? (partner.logo.startsWith('http') ? partner.logo : `${API_SERVER}${partner.logo}`)
-                              : '/default-logo.png'
-                          }
-                          alt={partner.name}
-                          className="h-12 w-12 object-contain"
-                          onError={(e) => {
-                            e.currentTarget.src = '/default-logo.png';
-                          }}
-                        />
-                      </div>
-                      {/* Tên đối tác - cắt giữa, 1 dòng, hover hiện full */}
-                      <div className="relative w-full px-2">
-                        <p
-                          className="text-[15px] font-semibold text-foreground line-clamp-1 text-center group-hover:text-primary transition-colors"
-                        >
-                          {partner.name.length > 20
-                            ? `${partner.name.slice(0, 8)}...${partner.name.slice(-8)}`
-                            : partner.name}
-                        </p>
-                        {/* Tooltip khi hover */}
-                        {partner.name.length > 20 && (
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 whitespace-nowrap z-10">
-                            {partner.name}
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-0 h-0 border-4 border-transparent border-t-gray-900"></div>
-                          </div>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-2">{partner.category}</p>
+                  <div className="bg-white rounded-3xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-500">
+                    <div className="aspect-square relative overflow-hidden">
+                      <img
+                        src={img}
+                        alt={partner.name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                        onError={(e) => e.currentTarget.src = "https://images.unsplash.com/photo-1559028006-448665bd7c7f?w=600&h=600&fit=crop"}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    </div>
+
+                    <div className="p-5 text-center">
+                      <h4 className="font-bold text-gray-900 text-sm leading-tight group-hover:text-purple-600 transition-colors">
+                        {partner.name.length > 30 ? `${partner.name.slice(0, 27)}...` : partner.name}
+                      </h4>
                       {partner.website && (
                         <a
                           href={partner.website}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-sm text-orange-500 hover:text-orange-600 font-medium transition-opacity duration-300"
+                          className="text-xs text-purple-600 hover:underline mt-2 inline-block"
                         >
-                          Tìm hiểu thêm
-                          <ExternalLink className="h-4 w-4" />
+                          Website
                         </a>
                       )}
                     </div>
                   </div>
                 </motion.div>
-              ))}
-            </div>
-          )}
-          <div className="mt-12 text-center">
-            <Button
-              size="lg"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-white font-medium shadow-md hover:shadow-lg hover:bg-primary/90 transition-all duration-300"
-              onClick={() => navigate('/organizations')}
-            >
-              Xem thêm đối tác
+              );
+            })}
+          </div>
+
+          <div className="text-center mt-16">
+            <Button size="lg" className="rounded-full px-10 bg-purple-600 hover:bg-purple-700" onClick={() => navigate('/organizations')}>
+              Xem tất cả đối tác
+              <ArrowRight className="ml-3 h-5 w-5" />
             </Button>
           </div>
         </div>

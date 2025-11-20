@@ -189,8 +189,20 @@ export default function ProgramsPage() {
                   </div>
 
                   <CardHeader>
-                    <CardTitle className="text-lg line-clamp-2 group-hover:text-primary transition-colors">
-                      {event.title}
+                    <CardTitle className="text-lg font-bold text-center group-hover:text-primary transition-colors leading-tight">
+                      <span
+                        className="block"
+                        title={event.title}
+                        style={{
+                          display: '-webkit-box',
+                          WebkitLineClamp: 1,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        } as React.CSSProperties}
+                      >
+                        {event.title}
+                      </span>
                     </CardTitle>
                     <CardDescription className="line-clamp-3">
                       {event.description}

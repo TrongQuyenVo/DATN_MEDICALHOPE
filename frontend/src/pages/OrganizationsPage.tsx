@@ -122,7 +122,7 @@ export default function OrganizationsPage() {
                         )}
                       </div>
                       <CardTitle className="text-center text-lg">{partner.name}</CardTitle>
-                      <CardDescription className="text-center">
+                      <CardDescription className="text-center line-clamp-5 text-sm">
                         {partner.details?.description || 'Không có mô tả'}
                       </CardDescription>
                     </CardHeader>

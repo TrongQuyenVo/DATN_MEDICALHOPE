@@ -164,7 +164,7 @@ export default function EventDetailPage() {
                 onClick={() => navigate('/programs')}
               >
                 <ArrowLeft className="mr-2 h-5 w-5" />
-                Quay lại danh sách
+                Quay lại
               </Button>
 
               <div className="max-w-4xl">

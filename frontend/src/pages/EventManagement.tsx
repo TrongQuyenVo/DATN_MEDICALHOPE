@@ -189,52 +189,97 @@ export default function EventManagement() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Ảnh</TableHead>
-                    <TableHead>Tên sự kiện</TableHead>
-                    <TableHead>Địa điểm</TableHead>
-                    <TableHead>Thời gian</TableHead>
-                    <TableHead>Tham gia</TableHead>
-                    <TableHead>Hành động</TableHead>
+                    <TableHead className="w-20">Ảnh</TableHead>
+                    <TableHead className="w-64">Tên sự kiện</TableHead>
+                    <TableHead className="w-48">Địa điểm</TableHead>
+                    <TableHead className="w-40">Thời gian</TableHead>
+                    <TableHead className="w-32 text-center">Tham gia</TableHead>
+                    <TableHead className="w-28 text-center">Hành động</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {events.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center py-12 text-muted-foreground text-lg">
                         Chưa có sự kiện nào
                       </TableCell>
                     </TableRow>
                   ) : (
                     events.map((event) => (
-                      <TableRow key={event._id} className="hover:bg-orange-50 transition-colors">
-                        <TableCell>
+                      <TableRow key={event._id} className="hover:bg-orange-50 transition-colors h-20">
+                        {/* Ảnh */}
+                        <TableCell className="py-3">
                           {event.image ? (
-                            <img src={getImageUrl(event.image)} alt={event.title} className="w-16 h-16 object-cover rounded-lg shadow" />
+                            <img
+                              src={getImageUrl(event.image)}
+                              alt={event.title}
+                              className="w-16 h-16 object-cover rounded-lg shadow-sm border"
+                            />
                           ) : (
-                            <div className="w-16 h-16 bg-gray-200 rounded-lg" />
+                            <div className="w-16 h-16 bg-gray-200 border-2 border-dashed rounded-lg" />
                           )}
                         </TableCell>
-                        <TableCell className="font-semibold text-lg">{event.title}</TableCell>
-                        <TableCell><MapPin className="inline w-4 h-4 mr-1 text-orange-600" /> {event.location}</TableCell>
-                        <TableCell className="text-sm">
-                          <div className="flex items-center gap-1">
-                            <Clock className="w-4 h-4 text-blue-600" />
-                            {new Date(event.startDate).toLocaleDateString('vi-VN')}
-                            {event.endDate && <> → {new Date(event.endDate).toLocaleDateString('vi-VN')}</>}
+
+                        {/* Tên sự kiện - giới hạn độ rộng, xuống dòng đẹp */}
+                        <TableCell className="font-semibold">
+                          <div className="max-w-xs line-clamp-2" title={event.title}>
+                            {event.title}
                           </div>
                         </TableCell>
+
+                        {/* Địa điểm */}
                         <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Users className="w-4 h-4 text-green-600" />
-                            <span className="font-bold text-green-700">{event.participants}</span>
-                            <span className="text-muted-foreground">/{event.target}</span>
+                          <div className="flex items-center gap-1.5 text-sm">
+                            <MapPin className="w-4 h-4 text-orange-600 flex-shrink-0" />
+                            <span className="truncate max-w-40">{event.location}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="space-x-2">
-                          <Button size="sm" variant="ghost" onClick={() => handleEdit(event)}><Edit className="w-4 h-4" /></Button>
-                          <Button size="sm" variant="ghost" onClick={() => confirm('Xóa sự kiện này?') && eventsAPI.delete(event._id).then(() => { toast.success('Đã xóa'); fetchEvents(); })}>
-                            <Trash2 className="w-4 h-4 text-red-500" />
-                          </Button>
+
+                        {/* Thời gian */}
+                        <TableCell className="text-sm">
+                          <div className="flex items-center gap-1.5">
+                            <Clock className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                            <div>
+                              <div>{new Date(event.startDate).toLocaleDateString('vi-VN')}</div>
+                              {event.endDate && (
+                                <div className="text-xs text-muted-foreground">
+                                  → {new Date(event.endDate).toLocaleDateString('vi-VN')}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
+
+                        {/* Tham gia */}
+                        <TableCell className="text-center">
+                          <div className="inline-flex items-center gap-1.5 bg-green-50 px-3 py-1.5 rounded-full">
+                            <Users className="w-4 h-4 text-green-600" />
+                            <span className="font-bold text-green-700">{event.participants || 0}</span>
+                            <span className="text-muted-foreground text-xs">/{event.target || '?'} </span>
+                          </div>
+                        </TableCell>
+
+                        {/* Hành động */}
+                        <TableCell>
+                          <div className="flex gap-1 justify-center">
+                            <Button size="sm" variant="ghost" onClick={() => handleEdit(event)}>
+                              <Edit className="w-4 h-4 text-blue-600" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                if (confirm('Xóa sự kiện này? Không thể hoàn tác!')) {
+                                  eventsAPI.delete(event._id).then(() => {
+                                    toast.success('Đã xóa sự kiện');
+                                    fetchEvents();
+                                  }).catch(() => toast.error('Xóa thất bại'));
+                                }
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4 text-red-500" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
