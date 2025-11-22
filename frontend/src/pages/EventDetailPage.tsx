@@ -161,7 +161,7 @@ export default function EventDetailPage() {
               <Button
                 variant="ghost"
                 className="text-white hover:bg-white/20 mb-6 border border-white/30 backdrop-blur-sm"
-                onClick={() => navigate('/programs')}
+                onClick={() => navigate('/')}
               >
                 <ArrowLeft className="mr-2 h-5 w-5" />
                 Quay lại

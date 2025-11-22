@@ -1,8 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NavLink, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Calendar,
-  Heart,
   Users,
   Stethoscope,
   Gift,
@@ -10,15 +10,16 @@ import {
   Building2,
   BarChart3,
   Settings,
-  Menu,
-  X,
   Home,
   Clock,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { useSidebar } from '@/contexts/SidebarContext';
+import Logo from '@/assets/logomedical.jpg';
 
 interface SidebarProps {
   className?: string;
@@ -32,14 +33,13 @@ export function Sidebar({ className }: SidebarProps) {
 
   if (!user) return null;
 
-  // Navigation items based on user role, excluding chatbot
   const getNavigationItems = () => {
     const commonItems = [
       { path: '/dashboard', icon: Home, label: t('dashboard') },
       { path: '/profile', icon: Settings, label: t('profile') },
     ];
 
-    const roleSpecificItems = {
+    const roleSpecificItems: Record<string, any[]> = {
       patient: [
         { path: '/appointments', icon: Calendar, label: t('appointments') },
         { path: '/doctors', icon: Stethoscope, label: t('doctors') },
@@ -58,22 +58,22 @@ export function Sidebar({ className }: SidebarProps) {
         { path: '/partners', icon: Building2, label: 'Quản lý đối tác' },
         { path: '/packages', icon: Gift, label: 'Quản lý gói khám miễn phí' },
         { path: '/events', icon: Calendar, label: 'Quản lý sự kiện & hoạt động' },
-        { path: '/testimonials', icon: Heart, label: 'Quản lý đánh giá' },
+        { path: '/testimonials', icon: HandHeart, label: 'Quản lý đánh giá' },
         { path: '/analytics', icon: BarChart3, label: 'Thống kê' },
       ],
       charity_admin: [
-        { path: '/patients', icon: Heart, label: t('patients') },
+        { path: '/patients', icon: Users, label: t('patients') },
         { path: '/donations', icon: Gift, label: t('donations') },
         { path: '/assistance', icon: HandHeart, label: t('assistance') },
-        { path: '/partners', icon: Building2, label: 'Quản lý đối tác' }, 
+        { path: '/partners', icon: Building2, label: 'Quản lý đối tác' },
       ],
     };
 
-    return [...commonItems, ...roleSpecificItems[user.role]];
+    return [...commonItems, ...(roleSpecificItems[user.role] || [])];
   };
 
   const navigationItems = getNavigationItems();
-  
+
   const isActive = (path: string) => {
     if (path === '/dashboard') {
       return location.pathname === '/dashboard' || location.pathname === '/';
@@ -86,58 +86,32 @@ export function Sidebar({ className }: SidebarProps) {
       initial={{ width: isCollapsed ? 80 : 280 }}
       animate={{ width: isCollapsed ? 80 : 280 }}
       transition={{ duration: 0.35, ease: 'easeInOut' }}
-      className={cn(
-        'border-r bg-sidebar flex flex-col h-screen',
-        className
-      )}
+      className={cn('border-r bg-sidebar flex flex-col h-screen', className)}
     >
-      {/* Sidebar Header */}
-      <div className="flex h-16 items-center justify-between px-4 border-b relative">
-        <div className="flex items-center overflow-hidden">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: isCollapsed ? 0 : 1, scale: isCollapsed ? 0.8 : 1 }}
-            transition={{ duration: 0.3 }}
-            className="h-8 w-8 rounded-full bg-gradient-primary flex items-center justify-center"
-          >
-            <Heart className="h-4 w-4 text-white" />
-          </motion.div>
-
-          <motion.span
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: isCollapsed ? 0 : 1, x: isCollapsed ? -10 : 0 }}
-            transition={{ duration: 0.3 }}
-            className="ml-2 whitespace-nowrap healthcare-heading text-lg font-bold"
-          >
-            MedicalHope+
-          </motion.span>
+      {/* Header - chỉ có logo + tên (không còn nút toggle ở đây) */}
+      <div className="flex h-16 items-center px-6 border-b gap-3">
+        <div className="h-9 w-9 rounded-sm overflow-hidden shadow-md border border-border bg-white flex-shrink-0">
+          <img src={Logo} alt="MedicalHope+" className="h-full w-full object-contain" />
         </div>
-
-        {/* Toggle Button */}
-        <motion.button
-          onClick={toggleCollapsed}
-          className={cn(
-            "absolute top-1/2 -translate-y-1/2 p-2 rounded-full hover:bg-sidebar-foreground/20 transition-all duration-300",
-            isCollapsed ? "left-1/2 -translate-x-1/2" : "right-4"
-          )}
+        <motion.span
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: isCollapsed ? 0 : 1, x: isCollapsed ? -10 : 0 }}
+          transition={{ duration: 0.3 }}
+          className="whitespace-nowrap healthcare-heading text-lg font-bold text-sidebar-foreground"
         >
-          {isCollapsed ? (
-            <Menu className="h-5 w-5 text-sidebar-foreground" />
-          ) : (
-            <X className="h-5 w-5 text-sidebar-foreground" />
-          )}
-        </motion.button>
+          MedicalHope+
+        </motion.span>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-4 py-6 space-y-2">
+      <nav className="flex-1 px-3 py-6 space-y-1">
         {navigationItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             className={({ isActive: navActive }) =>
               cn(
-                'flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                'flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 group',
                 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                 isActive(item.path)
                   ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
@@ -145,7 +119,7 @@ export function Sidebar({ className }: SidebarProps) {
               )
             }
           >
-            <item.icon className="h-4 w-4 shrink-0" />
+            <item.icon className="h-4.5 w-4.5 shrink-0" />
             <motion.span
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: isCollapsed ? 0 : 1, x: isCollapsed ? -10 : 0 }}
@@ -158,20 +132,43 @@ export function Sidebar({ className }: SidebarProps) {
         ))}
       </nav>
 
-      {/* User Role Badge */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: isCollapsed ? 0 : 1 }}
-        transition={{ duration: 0.3 }}
-        className="px-4 pb-4"
-      >
-        <div className="healthcare-card p-3 text-center">
-          <div className="text-xs text-muted-foreground mb-1">Vai trò hiện tại</div>
-          <div className="text-sm font-medium capitalize text-primary">
-            {t(user.role)}
-          </div>
+      {/* Footer: Role + Nút Thu gọn/Mở rộng (Chevron) */}
+      <div className="px-4 pb-5 bg-sidebar/95">
+        <div className="flex items-center justify-between gap-3">
+          {/* Role Badge */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: isCollapsed ? 0 : 1 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 min-w-0"
+          >
+            <div className="healthcare-card p-3 rounded-lg text-center border">
+              <div className="text-xs text-muted-foreground">Vai trò</div>
+              <div className="text-sm font-semibold capitalize text-primary truncate">
+                {t(user.role.replace('_', ' '))}
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Nút Chevron < > - ĐẸP & MƯỢT */}
+          <motion.button
+            onClick={toggleCollapsed}
+            className={cn(
+              "flex items-center justify-center w-9 h-9 rounded-full border transition-all duration-300",
+              "hover:bg-sidebar-foreground/20 hover:shadow-md",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+            )}
+            whileHover={{ scale: 1.15 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            {isCollapsed ? (
+              <ChevronRight className="h-5 w-5 text-sidebar-foreground" />
+            ) : (
+              <ChevronLeft className="h-5 w-5 text-sidebar-foreground" />
+            )}
+          </motion.button>
         </div>
-      </motion.div>
+      </div>
     </motion.aside>
   );
 }

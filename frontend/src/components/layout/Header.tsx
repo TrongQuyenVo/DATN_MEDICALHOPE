@@ -14,6 +14,7 @@ import { useAppStore } from '@/stores/appStore';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
+import Logo from '@/assets/logomedical.jpg'
 
 export function Header() {
   const { user, logout } = useAuthStore();

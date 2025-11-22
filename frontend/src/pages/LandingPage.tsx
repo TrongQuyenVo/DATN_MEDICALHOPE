@@ -31,6 +31,8 @@ import toast from 'react-hot-toast';
 import { HeartAnimation } from '@/components/layout/HeartAnimation';
 import PackageDetailModal from './PackageDetailModal';
 import PackageRegisterForm from '@/components/form/PackageRegisterForm';
+import BusPartnerModal from './BusPartnerModal';
+import FoodPointModal from './FoodPointModal';
 
 interface Partner {
   _id: string;
@@ -133,6 +135,10 @@ export default function LandingPage() {
   const [eventsLoading, setEventsLoading] = useState(true);
   const [packages, setPackages] = useState<any[]>([]);
   const [packagesLoading, setPackagesLoading] = useState(true);
+  const [selectedBusPartner, setSelectedBusPartner] = useState<Partner | null>(null);
+  const [busModalOpen, setBusModalOpen] = useState(false);
+  const [selectedFoodPoint, setSelectedFoodPoint] = useState<Partner | null>(null);
+  const [foodModalOpen, setFoodModalOpen] = useState(false);
 
   // Lấy danh sách đánh giá từ API
   const fetchTestimonials = async () => {
@@ -875,15 +881,11 @@ export default function LandingPage() {
           </motion.div>
         </div>
       </section>
-      {/* ==================== NHÀ XE 0 ĐỒNG – ẢNH TRÊN, NỘI DUNG DƯỚI ==================== */}
+      {/* ==================== NHÀ XE 0 ĐỒNG – CÓ MODAL CHI TIẾT ==================== */}
       <section className="py-20 bg-gradient-to-b from-orange-50 to-background">
         <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
+          {/* Tiêu đề giữ nguyên */}
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
             <div className="inline-flex items-center gap-3 rounded-full bg-orange-100 px-6 py-3 mb-6">
               <Bus className="h-6 w-6 text-orange-600" />
               <span className="font-bold text-orange-600 text-lg">ĐỘI XE THIỆN NGUYỆN 0 ĐỒNG</span>
@@ -909,10 +911,13 @@ export default function LandingPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1 }}
-                  className="group"
+                  className="group cursor-pointer"
+                  onClick={() => {
+                    setSelectedBusPartner(partner);
+                    setBusModalOpen(true);
+                  }}
                 >
-                  <Card className="overflow-hidden rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 border-0">
-                    {/* ẢNH Ở TRÊN */}
+                  <Card className="overflow-hidden rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 border-0 hover:ring-4 hover:ring-orange-200">
                     <div className="h-56 relative overflow-hidden">
                       <img
                         src={img}
@@ -926,7 +931,6 @@ export default function LandingPage() {
                       </Badge>
                     </div>
 
-                    {/* NỘI DUNG Ở DƯỚI */}
                     <CardContent className="p-6 bg-white">
                       <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-orange-600 transition-colors">
                         {partner.name}
@@ -959,12 +963,20 @@ export default function LandingPage() {
             })}
           </div>
 
+          {/* Nút xem tất cả */}
           <div className="text-center mt-16">
             <Button size="lg" className="rounded-full px-10" onClick={() => navigate('/transport')}>
               Xem tất cả nhà xe
               <ArrowRight className="ml-3 h-5 w-5" />
             </Button>
           </div>
+
+          {/* Modal chi tiết nhà xe */}
+          <BusPartnerModal
+            partner={selectedBusPartner}
+            open={busModalOpen}
+            onOpenChange={setBusModalOpen}
+          />
         </div>
       </section>
 
@@ -1002,7 +1014,11 @@ export default function LandingPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1 }}
-                  className="group"
+                  className="group cursor-pointer"
+                  onClick={() => {
+                    setSelectedFoodPoint(point);
+                    setFoodModalOpen(true);
+                  }}
                 >
                   <Card className="overflow-hidden rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 border-0">
                     <div className="h-56 relative overflow-hidden">
@@ -1039,7 +1055,7 @@ export default function LandingPage() {
                         {point.details?.description && (
                           <p
                             className="text-muted-foreground text-sm leading-relaxed mt-3 line-clamp-5"
-                            title={point.details.description} 
+                            title={point.details.description}
                           >
                             {point.details.description}
                           </p>
@@ -1059,6 +1075,11 @@ export default function LandingPage() {
             </Button>
           </div>
         </div>
+        <FoodPointModal
+          point={selectedFoodPoint}
+          open={foodModalOpen}
+          onOpenChange={setFoodModalOpen}
+        />
       </section>
 
       {/* ==================== TỔ CHỨC TỪ THIỆN – ẢNH TRÊN, NỘI DUNG DƯỚI ==================== */}
