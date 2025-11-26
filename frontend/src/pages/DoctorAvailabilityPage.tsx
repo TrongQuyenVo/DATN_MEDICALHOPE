@@ -1,264 +1,286 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { Calendar, Clock, Save, PlusCircle } from 'lucide-react';
+import {
+  Calendar,
+  Clock,
+  Save,
+  PlusCircle,
+  Trash2,
+} from 'lucide-react';
 import api from '@/lib/api';
 import ScrollToTop from '@/components/layout/ScrollToTop';
 import ChatBubble from './ChatbotPage';
 
 export default function DoctorAvailabilityPage() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [slots, setSlots] = useState<any[]>([]);
+  const [originalSlots, setOriginalSlots] = useState<any[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const today = new Date().toISOString().split('T')[0];
 
-  //Load từ DB
   useEffect(() => {
-    (async () => {
+    const load = async () => {
       try {
         const res = await api.get('/doctors/profile');
-        if (res.data.success && res.data.doctor.availableSlots) {
-          setSlots(res.data.doctor.availableSlots);
+        if (res.data.success && res.data.doctor?.availableSlots) {
+          const valid = res.data.doctor.availableSlots
+            .filter((s: any) => s.date >= today && s.isActive !== false)
+            .sort((a: any, b: any) => a.date.localeCompare(b.date));
+
+          setSlots(valid);
+          setOriginalSlots(JSON.parse(JSON.stringify(valid)));
         }
       } catch {
-        toast.error('Không thể tải lịch rảnh');
+        toast.error('Không tải được lịch rảnh');
       }
-    })();
-  }, []);
+    };
+    load();
+  }, [(today)]);
 
-  //Thêm ngày mới
+  // === Các hàm xử lý giống trước (giữ nguyên logic) ===
   const handleAddSlot = () => {
-    setSlots([...slots, { date: '', times: [''], isActive: true }]);
+    const next = new Date();
+    next.setDate(next.getDate() + 7);
+    const nextDate = next.toISOString().split('T')[0];
+    if (slots.some(s => s.date === nextDate)) return toast.error('Ngày này đã có rồi!');
+    setSlots([...slots, { date: nextDate, times: ['09:00'], isActive: true }]);
   };
 
-  //Cập nhật ngày
-  const handleDateChange = (index: number, value: string) => {
+  const handleDateChange = (i: number, date: string) => {
+    if (date < today) return toast.error('Không chọn ngày quá khứ');
+    if (slots.some((s, idx) => idx !== i && s.date === date)) return toast.error('Ngày này đã tồn tại!');
     const updated = [...slots];
-    updated[index].date = value;
+    updated[i].date = date;
     setSlots(updated);
   };
 
-  //Cập nhật từng giờ trong danh sách times
-  const handleTimeChange = (dateIndex: number, timeIndex: number, value: string) => {
+  const handleAddTime = (dateIdx: number) => {
     const updated = [...slots];
-    updated[dateIndex].times[timeIndex] = value;
+    const newTime = '14:00';
+    if (updated[dateIdx].times.includes(newTime)) return toast.error('Giờ này đã có rồi!');
+    updated[dateIdx].times.push(newTime);
+    updated[dateIdx].times.sort();
     setSlots(updated);
   };
 
-  //Thêm khung giờ cho 1 ngày
-  const handleAddTime = (index: number) => {
+  const handleTimeChange = (dateIdx: number, timeIdx: number, value: string) => {
+    if (!value) return;
     const updated = [...slots];
-    updated[index].times.push('');
+    const times = updated[dateIdx].times;
+    const others = times.filter((_: any, i: number) => i !== timeIdx);
+    if (others.includes(value)) return toast.error('Khung giờ này đã tồn tại trong ngày!');
+    times[timeIdx] = value;
+    times.sort();
     setSlots(updated);
   };
 
-  //Xóa 1 khung giờ
-  const handleDeleteTime = (dateIndex: number, timeIndex: number) => {
+  const handleDeleteTime = (dateIdx: number, timeIdx: number) => {
+    if (slots[dateIdx].times.length <= 1) return toast.error('Phải có ít nhất 1 khung giờ');
     const updated = [...slots];
-    updated[dateIndex].times.splice(timeIndex, 1);
+    updated[dateIdx].times.splice(timeIdx, 1);
     setSlots(updated);
   };
 
-  //Xóa 1 ngày
-  const handleDeleteDate = (index: number) => {
-    setSlots(slots.filter((_, i) => i !== index));
-  };
+  const handleDeleteDate = (i: number) => setSlots(slots.filter((_, idx) => idx !== i));
 
-  //Lưu lịch rảnh
   const handleSave = async () => {
+    // Validation giống trước...
+    let error = false;
+    const dates = slots.map(s => s.date);
+    if (new Set(dates).size < dates.length) { toast.error('Có ngày bị trùng!'); error = true; }
+    for (const slot of slots) {
+      const times = slot.times.filter((t: string) => t.trim());
+      if (new Set(times).size < times.length) {
+        toast.error(`Ngày ${slot.date} có khung giờ bị trùng!`);
+        error = true;
+      }
+    }
+    if (error) return;
+
+    const cleaned = slots
+      .map(s => ({
+        date: s.date,
+        times: [...new Set(s.times.filter((t: string) => t.trim()))].sort(),
+        isActive: true,
+      }))
+      .filter(s => s.times.length > 0);
+
+    if (cleaned.length === 0) return toast.error('Phải có ít nhất 1 ngày!');
+
     try {
       setLoading(true);
-
-      const availableSlots = slots
-        .filter((s) => s.date && s.times.some((t) => t.trim() !== ''))
-        .map((s) => ({
-          date: s.date,
-          times: s.times.filter((t) => t.trim() !== ''),
-          isActive: true,
-        }));
-
-      await api.put('/doctors/availability', { availableSlots });
-      toast.success('Cập nhật lịch rảnh thành công!');
+      await api.put('/doctors/availability', { availableSlots: cleaned });
+      toast.success('Cập nhật lịch thành công!');
+      setOriginalSlots(JSON.parse(JSON.stringify(cleaned)));
+      setSlots(cleaned);
       setIsEditing(false);
     } catch {
-      toast.error('Lỗi khi lưu lịch rảnh');
+      toast.error('Lỗi khi lưu');
     } finally {
       setLoading(false);
     }
   };
 
-  //View Mode
-  if (!isEditing) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="max-w-4xl mx-auto p-6"
-      >
-        <Card className="shadow-lg border-primary/20 text-center">
-          <CardHeader>
-            <Clock className="w-10 h-10 text-primary mx-auto" />
-            <CardTitle className="text-2xl font-bold text-primary">
-              Lịch rảnh của bạn
-            </CardTitle>
-          </CardHeader>
+  const handleCancel = () => {
+    setSlots(JSON.parse(JSON.stringify(originalSlots)));
+    setIsEditing(false);
+    toast('Đã hủy thay đổi');
+  };
 
-          <CardContent className="space-y-6">
-            {slots.length === 0 ? (
-              <div className="py-10 text-muted-foreground">
-                <p className="text-lg mb-4">
-                  Hiện tại bạn chưa khai báo lịch rảnh nào.
-                </p>
-                <Button onClick={() => setIsEditing(true)} className="gap-2">
-                  <Calendar className="w-4 h-4" />
-                  Khai báo lịch rảnh
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {slots.map((s, i) => (
-                  <div key={i} className="p-4 border rounded-xl bg-card/50 text-left">
-                    <p className="font-semibold mb-1">📅 {s.date}</p>
-                    <p className="text-muted-foreground">
-                      {s.times && s.times.length > 0
-                        ? s.times.join(', ')
-                        : 'Không có giờ nào'}
-                    </p>
-                  </div>
-                ))}
-                <Separator />
-                <Button
-                  onClick={() => setIsEditing(true)}
-                  variant="secondary"
-                  className="w-full gap-2"
-                >
-                  Chỉnh sửa lịch
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </motion.div>
-    );
-  }
-
-  //Edit Mode
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="max-w-4xl mx-auto p-6"
-    >
-      <Card className="shadow-lg border-primary/20">
-        <CardHeader className="flex flex-col items-center gap-2 text-center">
-          <Calendar className="w-10 h-10 text-primary" />
-          <CardTitle className="text-2xl font-bold text-primary">
-            Cập nhật lịch rảnh theo ngày
-          </CardTitle>
-          <p className="text-muted-foreground text-sm">
-            Chọn ngày và thêm các khung giờ bạn có thể làm việc.
-          </p>
+  return !isEditing ? (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-4xl mx-auto p-4 sm:p-6">
+      <Card className="border-0 shadow-xl rounded-2xl overflow-hidden">
+        <CardHeader className="bg-gradient-to-br from-blue-600 to-blue-700 text-white pb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-2xl sm:text-3xl font-bold">Lịch rảnh khám tình nguyện</CardTitle>
+              <p className="text-blue-100 mt-2 text-sm sm:text-base">
+                {slots.length === 0 ? 'Chưa có lịch mở' : `Đã mở ${slots.length} ngày khám miễn phí`}
+              </p>
+            </div>
+            <Clock className="w-12 h-12 opacity-80" />
+          </div>
         </CardHeader>
 
-        <Separator className="my-2" />
+        <CardContent className="pt-6 pb-8">
+          {slots.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
+                <Calendar className="w-12 h-12 text-gray-400" />
+              </div>
+              <p className="text-lg text-muted-foreground mb-8">Bạn chưa mở lịch khám tình nguyện</p>
+              <Button size="lg" onClick={() => setIsEditing(true)}>
+                <PlusCircle className="mr-2" /> Mở lịch ngay
+              </Button>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-4">
+                {slots.map((slot, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    className="border border-gray-200 rounded-xl p-5 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <h3 className="font-semibold text-lg">
+                        {new Date(slot.date).toLocaleDateString('vi-VN', {
+                          weekday: 'long',
+                          day: 'numeric',
+                          month: 'long',
+                        })}
+                      </h3>
+                      <Badge variant="secondary">{slot.times.length} khung giờ</Badge>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {slot.times.map((t: string, j: number) => (
+                        <Badge key={j} variant="outline" className="font-mono text-sm">
+                          {t}
+                        </Badge>
+                      ))}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
 
-        <CardContent className="space-y-4">
+              <Separator className="my-8" />
+
+              <Button className="w-full" size="lg" onClick={() => setIsEditing(true)}>
+                <Calendar className="mr-2 w-5 h-5" /> Chỉnh sửa lịch
+              </Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </motion.div>
+  ) : (
+    /* ===================== EDIT MODE – SẠCH SẼ & HIỆN ĐẠI ===================== */
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-5xl mx-auto p-4 sm:p-6">
+      <Card className="border-0 shadow-xl ">
+        <CardHeader className="bg-gradient-to-br from-emerald-600 to-emerald-700 text-white rounded-t-2xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-2xl sm:text-3xl font-bold">Chỉnh sửa lịch rảnh</CardTitle>
+              <p className="text-emerald-100 mt-1 text-sm sm:text-base">Thêm/xóa ngày và khung giờ dễ dàng</p>
+            </div>
+            <Calendar className="w-10 h-10 opacity-90" />
+          </div>
+        </CardHeader>
+
+        <CardContent className="pt-8 space-y-8">
           {slots.map((slot, i) => (
-            <div
-              key={slot.date || `slot-${i}`}
-              className="p-4 rounded-xl border border-border bg-card/50"
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="border border-gray-200 rounded-xl p-6 bg-gray-50/50"
             >
-              <div className="flex flex-col md:flex-row justify-between items-center gap-3 mb-3">
+              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mb-5">
                 <Input
                   type="date"
                   value={slot.date}
-                  onChange={(e) => handleDateChange(i, e.target.value)}
-                  className="w-full md:w-1/3"
+                  min={today}
+                  onChange={e => handleDateChange(i, e.target.value)}
+                  className="text-base font-medium w-full sm:w-48"
                 />
-                <Button
-                  variant="destructive"
-                  onClick={() => handleDeleteDate(i)}
-                  className="md:w-auto"
-                >
-                  Xóa ngày
+                <Button variant="destructive" size="sm" onClick={() => handleDeleteDate(i)}>
+                  <Trash2 className="mr-2 w-4 h-4" /> Xóa ngày
                 </Button>
               </div>
 
-              <div className="space-y-2">
-                {slot.times.map((time, j) => (
-                  <div
-                    key={`${slot.date}-${time || j}`}
-                    className="flex items-center gap-3"
-                  >
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                {slot.times.map((time: string, j: number) => (
+                  <div key={j} className="flex items-center gap-2">
                     <Input
                       type="time"
                       value={time}
-                      onChange={(e) => handleTimeChange(i, j, e.target.value)}
-                      className="w-1/3"
+                      onChange={e => handleTimeChange(i, j, e.target.value)}
+                      className="text-base font-mono"
                     />
                     <Button
-                      variant="outline"
-                      size="sm"
+                      variant="ghost"
+                      size="icon"
+                      className="text-red-600 hover:bg-red-50 h-10 w-10"
                       onClick={() => handleDeleteTime(i, j)}
                     >
-                      Xóa giờ
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 ))}
+                <Button variant="outline" size="sm" className="h-10" onClick={() => handleAddTime(i)}>
+                  <PlusCircle className="mr-2 w-4 h-4" /> Thêm giờ
+                </Button>
               </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-3"
-                onClick={() => handleAddTime(i)}
-              >
-                <PlusCircle className="w-4 h-4 mr-1" />
-                Thêm khung giờ
-              </Button>
-            </div>
+            </motion.div>
           ))}
 
-          <Button
-            variant="outline"
-            className="w-full mt-4"
-            onClick={handleAddSlot}
-          >
-            <PlusCircle className="w-4 h-4 mr-2" /> Thêm ngày mới
+          <Button variant="outline" className="w-full h-12" size="lg" onClick={handleAddSlot}>
+            <PlusCircle className="mr-2 w-5 h-5" /> Thêm ngày mới
           </Button>
 
-          <div className="flex gap-3 mt-6">
-            <Button
-              className="w-full font-semibold"
-              onClick={handleSave}
-              disabled={loading}
-            >
-              {loading ? 'Đang lưu...' : (
-                <>
-                  <Save className="w-4 h-4 mr-2" /> Lưu thay đổi
-                </>
-              )}
+          <div className="flex flex-col sm:flex-row gap-4 pt-6">
+            <Button className="flex-1 h-12 text-lg font-medium" size="lg" onClick={handleSave} disabled={loading}>
+              {loading ? 'Đang lưu...' : <> <Save className="mr-2 w-5 h-5" /> Lưu thay đổi</>}
             </Button>
-
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => setIsEditing(false)}
-              disabled={loading}
-            >
-              Hủy
+            <Button variant="outline" className="flex-1 h-12 text-lg" size="lg" onClick={handleCancel} disabled={loading}>
+              Hủy bỏ
             </Button>
           </div>
         </CardContent>
       </Card>
+
       <ScrollToTop />
-            <ChatBubble />
+      <ChatBubble />
     </motion.div>
   );
 }

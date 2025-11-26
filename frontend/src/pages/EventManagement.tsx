@@ -316,33 +316,51 @@ export default function EventManagement() {
                       </div>
                     </button>
 
-                    {events.map((event) => (
-                      <button
-                        key={event._id}
-                        onClick={() => setSelectedEventId(event._id)}
-                        className={`w-full text-left p-5 rounded-xl border-2 transition-all duration-200 ${selectedEventId === event._id
-                          ? 'bg-emerald-50 border-emerald-500 shadow-md'
-                          : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
-                          }`}
-                      >
-                        <div className="flex items-center gap-4">
-                          {event.image ? (
-                            <img src={getImageUrl(event.image)} alt={event.title} className="w-12 h-12 object-cover rounded-lg shadow-sm" />
-                          ) : (
-                            <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
-                              <Calendar className="h-6 w-6 text-gray-400" />
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-gray-900 truncate">{event.title}</div>
-                            <div className="text-sm text-gray-600 flex items-center gap-1 mt-1">
-                              <Users className="h-3.5 w-3.5" />
-                              {event.participants || 0} người
+                    {events.map((event) => {
+                      const participantCount = event.participants?.length || 0;
+
+                      return (
+                        <button
+                          key={event._id}
+                          onClick={() => setSelectedEventId(event._id)}
+                          className={`w-full text-left p-5 rounded-2xl border-2 transition-all duration-300 group
+                              ${selectedEventId === event._id
+                              ? 'bg-emerald-50 border-emerald-500 shadow-lg ring-2 ring-emerald-200'
+                              : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300 hover:shadow-md'
+                            }`}
+                        >
+                          <div className="flex items-start gap-4">
+                            {/* Ảnh sự kiện */}
+                            {event.image ? (
+                              <img
+                                src={getImageUrl(event.image)}
+                                alt={event.title}
+                                className="w-14 h-14 object-cover rounded-xl shadow-md flex-shrink-0 border-2 border-white mt-1"
+                              />
+                            ) : (
+                              <div className="w-14 h-14 bg-gradient-to-br from-emerald-400 to-blue-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md mt-1">
+                                <Calendar className="h-7 w-7 text-white" />
+                              </div>
+                            )}
+
+                            {/* Nội dung */}
+                            <div className="flex-1 min-w-0">
+                              {/* TIÊU ĐỀ SỰ KIỆN – HIỆN TỐI ĐA 2 DÒNG */}
+                              <h3 className="font-bold text-gray-900 text-base leading-tight line-clamp-2">
+                                {event.title}
+                              </h3>
+
+                              {/* Số người tham gia */}
+                              <div className="flex items-center gap-2 mt-2">
+                                <Users className="h-4 w-4 text-emerald-600" />
+                                <span className="font-semibold text-emerald-700">{participantCount}</span>
+                                <span className="text-gray-500 text-xs">người tham gia</span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </button>
-                    ))}
+                        </button>
+                      );
+                    })}
                   </div>
                 </ScrollArea>
               </CardContent>

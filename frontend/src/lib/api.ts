@@ -86,6 +86,7 @@ export const usersAPI = {
 // ==========================
 export const doctorsAPI = {
   getAll: (params?: any) => api.get('/doctors', { params }),
+  getById: (id: string) => api.get(`/doctors/${id}`),
   getProfile: () => api.get('/doctors/profile'),
   updateProfile: (data: any) => api.put('/doctors/profile', data),
   updateAvailability: (data: any) => api.put('/doctors/availability', data),

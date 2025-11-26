@@ -203,145 +203,99 @@ export default function AssistancePage() {
 
       {/* LIST */}
       <div className="space-y-6">
-        <h2 className="text-xl font-semibold flex items-center gap-2">Danh sách yêu cầu</h2>
+        <h2 className="text-2xl font-bold">Danh sách yêu cầu hỗ trợ</h2>
 
         {loading ? (
-          <div className="text-center py-12 text-muted-foreground">Đang tải dữ liệu...</div>
+          <div className="text-center py-16">Đang tải...</div>
         ) : visibleRequests.length === 0 ? (
-          <Card className="p-8 text-center text-muted-foreground">
-            <HandHeart className="h-12 w-12 mx-auto mb-4 text-muted" />
-            <p>Chưa có yêu cầu hỗ trợ nào.</p>
-            {isPatient && <p className="mt-2">Hãy gửi yêu cầu đầu tiên!</p>}
+          <Card className="text-center py-16">
+            <HandHeart className="h-16 w-16 mx-auto mb-4 text-muted" />
+            <p className="text-lg">Chưa có yêu cầu nào</p>
           </Card>
         ) : (
-          <div className="space-y-4">
-            {visibleRequests.map((req, i) => {
-              // TÍNH PROGRESS AN TOÀN
-              const progress = req.requestedAmount > 0
-                ? Math.min(100, (req.raisedAmount / req.requestedAmount) * 100)
-                : 0;
-
+          <div className="grid gap-6">
+            {visibleRequests.map((req) => {
+              const progress = req.requestedAmount > 0 ? (req.raisedAmount / req.requestedAmount) * 100 : 0;
               const status = getStatusConfig(req.status);
               const StatusIcon = status.icon;
-              const myPatientId = (user as any).patientId?._id || user.id;
-              const patientName =
-                typeof req.patientId.userId === 'object'
-                  ? req.patientId.userId?.fullName
-                  : req.patientId.fullName || 'Ẩn danh';
+
+              function formatVND(raisedAmount: number): import("react").ReactNode | Iterable<import("react").ReactNode> {
+                if (raisedAmount == null || isNaN(Number(raisedAmount))) return '0 ₫';
+                const value = Math.round(Number(raisedAmount));
+                return new Intl.NumberFormat('vi-VN', {
+                  style: 'currency',
+                  currency: 'VND',
+                  maximumFractionDigits: 0,
+                }).format(value);
+              }
 
               return (
                 <motion.div
                   key={req._id}
-                  initial={{ opacity: 0, x: -20 }}
+                  initial={{ opacity: 0, x: -30 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  onClick={() => navigate(`/assistance/${req._id}`)}
                   className="cursor-pointer"
+                  onClick={() => navigate(`/assistance/${req._id}`)}
                 >
-                  <Card className="hover:shadow-lg transition-all hover:scale-[1.01] border-2 hover:border-primary/20">
+                  <Card className="hover:shadow-2xl transition-all hover:border-primary border-2">
                     <CardContent className="p-6">
-                      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                        {/* LEFT: INFO */}
-                        <div className="flex-1 space-y-3">
-                          <div className="flex items-center gap-3">
-                            <h3 className="text-lg font-bold text-primary">{patientName}</h3>
-                            {getUrgencyBadge(req.urgency)}
-                            <Badge className={`${status.bg} ${status.color}`}>
-                              <StatusIcon className="w-3 h-3 mr-1" />
-                              {status.label}
-                            </Badge>
+                      <div className="flex flex-col lg:flex-row justify-between gap-6">
+                        <div className="flex-1 space-y-4">
+                          <div className="flex items-start justify-between flex-wrap gap-3">
+                            <h3 className="text-2xl font-bold text-primary">
+                              {typeof req.patientId.userId === 'object' ? req.patientId.userId.fullName : req.patientId.fullName || 'Ẩn danh'}
+                            </h3>
+                            <div className="flex gap-2">
+                              {getUrgencyBadge(req.urgency)}
+                              <Badge className={`${status.bg} ${status.color}`}>
+                                <StatusIcon className="h-3 w-3 mr-1" /> {status.label}
+                              </Badge>
+                            </div>
                           </div>
 
-                          <p className="text-sm text-muted-foreground">
-                            <strong>Tiêu đề:</strong> {req.title}
-                          </p>
+                          <p className="text-lg font-semibold">{req.title}</p>
+                          <p className="text-muted-foreground line-clamp-2">{req.description}</p>
 
-                          <p className="text-sm text-muted-foreground line-clamp-2">
-                            {req.description}
-                          </p>
-
-                          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                            <span>Ngày gửi: {new Date(req.createdAt).toLocaleDateString('vi-VN')}</span>
+                          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                            <span>{new Date(req.createdAt).toLocaleDateString('vi-VN')}</span>
                             <span>{getRequestTypeLabel(req.requestType)}</span>
-                            {req.approvedBy?.fullName && <span>Duyệt bởi: {req.approvedBy.fullName}</span>}
+                            {req.approvedBy?.fullName && <span>Duyệt: {req.approvedBy.fullName}</span>}
                           </div>
                         </div>
 
-                        {/* RIGHT: PROGRESS + ACTION */}
-                        <div className="flex flex-col items-end gap-3 w-full lg:w-64">
-                          {/* PROGRESS - CHỈ HIỆN KHI ĐÃ DUYỆT */}
-                          {['approved', 'in_progress', 'completed'].includes(req.status) && req.requestedAmount > 0 && (
-                            <div className="w-full space-y-1">
-                              <div className="flex justify-between text-sm">
-                                <span className="font-medium">
-                                  {req.raisedAmount.toLocaleString()} VNĐ
-                                </span>
-                                <span className="text-muted-foreground">
-                                  / {req.requestedAmount.toLocaleString()} VNĐ
-                                </span>
+                        <div className="flex flex-col items-end gap-4 w-full lg:w-80">
+                          {req.status === 'approved' && (
+                            <div className="w-full space-y-2 text-right">
+                              <div className="flex justify-between text-lg font-bold">
+                                <span>{formatVND(req.raisedAmount)}</span>
+                                <span className="text-muted-foreground">/ {formatVND(req.requestedAmount)}</span>
                               </div>
-                              <Progress value={progress} className="h-2" />
-                              <p className="text-xs text-right text-muted-foreground">
-                                {progress.toFixed(1)}% hoàn thành
-                              </p>
+                              <Progress value={progress} className="h-3" />
+                              <p className="text-sm">{progress.toFixed(1)}% hoàn thành</p>
                             </div>
                           )}
 
-                          {/* PENDING */}
-                          {req.status === 'pending' && (
-                            <div className="w-full text-right text-xs text-muted-foreground">
-                              Chờ duyệt...
-                            </div>
-                          )}
-
-                          {/* NÚT HÀNH ĐỘNG */}
-                          <div className="flex gap-2 w-full">
+                          <div className="flex gap-3 w-full">
                             {isAdmin && req.status === 'pending' ? (
                               <>
-                                <Button
-                                  size="sm"
-                                  onClick={(e) => { e.stopPropagation(); handleApproveRequest(req._id); }}
-                                  className="flex-1"
-                                >
-                                  <CheckCircle className="mr-1 h-3 w-3" /> Duyệt
+                                <Button size="sm" onClick={(e) => { e.stopPropagation(); handleApproveRequest(req._id); }}>
+                                  <CheckCircle className="mr-1 h-4 w-4" /> Duyệt
                                 </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={(e) => { e.stopPropagation(); handleRejectRequest(req._id); }}
-                                  className="flex-1 text-red-600 border-red-600"
-                                >
-                                  <XCircle className="mr-1 h-3 w-3" /> Từ chối
-                                </Button>
-                              </>
-                            ) : isAdmin ? (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={(e) => { e.stopPropagation(); navigate(`/assistance/${req._id}`); }}
-                                  className="flex-1"
-                                >
-                                  <Eye className="mr-1 h-3 w-3" /> Xem
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={(e) => { e.stopPropagation(); handleDeleteRequest(req._id); }}
-                                  className="flex-1"
-                                >
-                                  <Trash2 className="mr-1 h-3 w-3" /> Xóa
+                                <Button size="sm" variant="destructive" onClick={(e) => { e.stopPropagation(); handleRejectRequest(req._id); }}>
+                                  <XCircle className="mr-1 h-4 w-4" /> Từ chối
                                 </Button>
                               </>
                             ) : (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={(e) => { e.stopPropagation(); navigate(`/assistance/${req._id}`); }}
-                                className="flex-1"
-                              >
-                                <Eye className="mr-1 h-3 w-3" /> Xem
-                              </Button>
+                              <>
+                                <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); navigate(`/assistance/${req._id}`); }}>
+                                  <Eye className="mr-1 h-4 w-4" /> Xem chi tiết
+                                </Button>
+                                {isAdmin && (
+                                  <Button size="sm" variant="destructive" onClick={(e) => { e.stopPropagation(); handleDeleteRequest(req._id); }}>
+                                    <Trash2 className="h-4 w-4" /> Xóa
+                                  </Button>
+                                )}
+                              </>
                             )}
                           </div>
                         </div>
@@ -358,7 +312,7 @@ export default function AssistancePage() {
       {/* FORMS */}
       <AssistanceRequestForm open={showRequestForm} onOpenChange={setShowRequestForm} />
       <ScrollToTop />
-      {!isAdmin && <ChatBubble />}
+      {/* {!isAdmin && <ChatBubble />} */}
     </motion.div>
   );
 }

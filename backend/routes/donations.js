@@ -5,7 +5,7 @@ const donationController = require("../controllers/donationController");
 
 const router = express.Router();
 
-router.post("/", auth, donationController.createDonation);
+router.post("/", donationController.createDonation);
 
 router.get(
   "/",

@@ -1,24 +1,36 @@
-import { motion } from 'framer-motion';
-import { Calendar, Clock, Users, CheckCircle, XCircle, User } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { useAuthStore } from '@/stores/authStore';
-import { useState, useEffect } from 'react';
-import toast from 'react-hot-toast';
-import BookAppointmentForm from '@/components/form/BookAppointmentForm';
-import { appointmentsAPI } from '@/lib/api';
-import ChatBubble from './ChatbotPage';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { motion } from "framer-motion";
+import {
+  Calendar,
+  Clock,
+  User,
+  Video,
+  Stethoscope,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
+} from "lucide-react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useAuthStore } from "@/stores/authStore";
+import { useState, useEffect } from "react";
+import toast from "react-hot-toast";
+import BookAppointmentForm from "@/components/form/BookAppointmentForm";
+import { appointmentsAPI } from "@/lib/api";
 
 export default function AppointmentsPage() {
   const { user } = useAuthStore();
-  const [appointments, setAppointments] = useState([]);
-  const [pagination, setPagination] = useState({ total: 0, pages: 1, page: 1, limit: 10 });
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    pages: 1,
+    page: 1,
+    limit: 10,
+  });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
-  const isAdmin = user?.role === 'admin' || user?.role === 'charity_admin';
-
 
   const fetchAppointments = async () => {
     try {
@@ -34,9 +46,12 @@ export default function AppointmentsPage() {
         : [];
 
       setAppointments(appointmentsData);
-      setPagination(response.data.pagination || { total: 0, pages: 1, page: 1, limit: 10 });
-    } catch (error) {
-      const errorMessage = error.response?.data?.message || 'Không thể tải danh sách lịch hẹn';
+      setPagination(
+        response.data.pagination || { total: 0, pages: 1, page: 1, limit: 10 }
+      );
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.message || "Không thể tải danh sách lịch hẹn";
       toast.error(errorMessage);
       setError(errorMessage);
     } finally {
@@ -48,84 +63,149 @@ export default function AppointmentsPage() {
     fetchAppointments();
   }, [pagination.page, pagination.limit]);
 
-  const handleConfirmAppointment = async (appointmentId) => {
+  const handleConfirmAppointment = async (appointmentId: string) => {
     try {
-      console.log('Confirming appointment ID:', appointmentId);
-      await appointmentsAPI.updateStatus(appointmentId, { status: 'confirmed' });
+      await appointmentsAPI.updateStatus(appointmentId, {
+        status: "confirmed",
+      });
       setAppointments((prev) =>
         prev.map((apt) =>
-          apt._id === appointmentId ? { ...apt, status: 'confirmed' } : apt
+          apt._id === appointmentId ? { ...apt, status: "confirmed" } : apt
         )
       );
-      toast.success('Đã xác nhận lịch hẹn');
-    } catch (error) {
-      const errorMessage = error.response?.data?.message || 'Không thể xác nhận lịch hẹn';
-      console.error('Lỗi xác nhận lịch hẹn:', error);
-      toast.error(errorMessage);
+      toast.success("Đã xác nhận lịch hẹn");
+    } catch (error: any) {
+      toast.error(
+        error.response?.data?.message || "Không thể xác nhận lịch hẹn"
+      );
     }
   };
 
-  const handleRejectAppointment = async (appointmentId) => {
+  const handleRejectAppointment = async (appointmentId: string) => {
     try {
-      await appointmentsAPI.updateStatus(appointmentId, { status: 'cancelled' });
+      await appointmentsAPI.updateStatus(appointmentId, {
+        status: "cancelled",
+      });
       setAppointments((prev) =>
         prev.map((apt) =>
-          apt._id === appointmentId ? { ...apt, status: 'cancelled' } : apt
+          apt._id === appointmentId ? { ...apt, status: "cancelled" } : apt
         )
       );
-      toast.success('Đã từ chối lịch hẹn');
-    } catch (error) {
-      const errorMessage = error.response?.data?.message || 'Không thể từ chối lịch hẹn';
-      console.error('Lỗi từ chối lịch hẹn:', error);
-      toast.error(errorMessage);
+      toast.success("Đã từ chối lịch hẹn");
+    } catch (error: any) {
+      toast.error(
+        error.response?.data?.message || "Không thể từ chối lịch hẹn"
+      );
     }
   };
 
-  const handleCancelAppointment = async (appointmentId) => {
+  const handleCancelAppointment = async (appointmentId: string) => {
     try {
-      await appointmentsAPI.updateStatus(appointmentId, { status: 'cancelled' });
+      await appointmentsAPI.updateStatus(appointmentId, {
+        status: "cancelled",
+      });
       setAppointments((prev) =>
         prev.map((apt) =>
-          apt._id === appointmentId ? { ...apt, status: 'cancelled' } : apt
+          apt._id === appointmentId ? { ...apt, status: "cancelled" } : apt
         )
       );
-      toast.success('Bạn đã hủy lịch hẹn thành công');
-    } catch (error) {
-      const errorMessage = error.response?.data?.message || 'Không thể hủy lịch hẹn';
-      console.error('Lỗi khi hủy lịch hẹn:', error);
-      toast.error(errorMessage);
+      toast.success("Bạn đã hủy lịch hẹn thành công");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Không thể hủy lịch hẹn");
     }
   };
 
-  const handlePageChange = (newPage) => {
+  const handlePageChange = (newPage: number) => {
     setPagination((prev) => ({ ...prev, page: newPage }));
   };
 
   const getPageTitle = () => {
     switch (user?.role) {
-      case 'patient':
-        return 'Lịch hẹn của tôi';
-      case 'doctor':
-        return 'Lịch khám bệnh';
+      case "patient":
+        return "Lịch hẹn của tôi";
+      case "doctor":
+        return "Lịch khám bệnh";
       default:
-        return 'Quản lý lịch hẹn';
+        return "Quản lý lịch hẹn";
     }
   };
 
-  const getPageSubtitle = () => {
-    switch (user?.role) {
-      case 'patient':
-        return 'Các cuộc hẹn khám bệnh của bạn';
-      case 'doctor':
-        return 'Lịch khám của bệnh nhân';
-      default:
-        return 'Quản lý tất cả các cuộc hẹn khám bệnh';
-    }
-  };
-
-  // Kiểm tra lịch hẹn đã quá thời gian
-  const isAppointmentExpired = (scheduledTime) => {
+  const isAppointmentExpired = (scheduledTime: string) => {
     return new Date(scheduledTime) < new Date();
+  };
+
+  // HÀM HIỂN THỊ LOẠI KHÁM BẰNG TIẾNG VIỆT + ICON ĐẸP
+  const renderAppointmentType = (type: string) => {
+    switch (type) {
+      case "consultation":
+        return (
+          <div className="flex items-center gap-2 text-blue-700 font-medium">
+            <Stethoscope className="h-4 w-4" /> Khám lần đầu
+          </div>
+        );
+      case "follow_up":
+        return (
+          <div className="flex items-center gap-2 text-green-700 font-medium">
+            <Calendar className="h-4 w-4" /> Tái khám
+          </div>
+        );
+      case "emergency":
+        return (
+          <div className="flex items-center gap-2 text-red-700 font-medium">
+            <AlertCircle className="h-4 w-4" /> Khám khẩn cấp
+          </div>
+        );
+      case "telehealth":
+        return (
+          <div className="flex items-center gap-2 text-purple-700 font-medium">
+            <Video className="h-4 w-4" /> Khám online
+          </div>
+        );
+      default:
+        return <span className="text-muted-foreground">{type}</span>;
+    }
+  };
+
+  // HÀM HIỂN THỊ TRẠNG THÁI ĐẸP + MÀU CHUẨN
+  const renderStatusBadge = (status: string) => {
+    const statusConfig: Record<string, { text: string; className: string }> = {
+      confirmed: {
+        text: "Đã xác nhận",
+        className: "bg-green-100 text-green-800 border-green-200",
+      },
+      scheduled: {
+        text: "Đã đặt lịch",
+        className: "bg-blue-100 text-blue-800 border-blue-200",
+      },
+      pending: {
+        text: "Chờ xác nhận",
+        className: "bg-yellow-100 text-yellow-800 border-yellow-200",
+      },
+      in_progress: {
+        text: "Đang khám",
+        className: "bg-purple-100 text-purple-800 border-purple-200",
+      },
+      completed: {
+        text: "Hoàn thành",
+        className: "bg-emerald-100 text-emerald-800 border-emerald-200",
+      },
+      cancelled: {
+        text: "Đã hủy",
+        className: "bg-red-100 text-red-800 border-red-200",
+      },
+      no_show: {
+        text: "Không đến",
+        className: "bg-gray-100 text-gray-700 border-gray-300",
+      },
+    };
+
+    const config = statusConfig[status] || {
+      text: status,
+      className: "bg-gray-100 text-gray-700",
+    };
+    return (
+      <Badge className={`${config.className} font-medium`}>{config.text}</Badge>
+    );
   };
 
   if (!user) return null;
@@ -147,160 +227,174 @@ export default function AppointmentsPage() {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
       className="space-y-6"
     >
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="healthcare-heading text-3xl font-bold">{getPageTitle()}</h1>
-          <p className="healthcare-subtitle">{getPageSubtitle()}</p>
+          <h1 className="healthcare-heading text-3xl font-bold">
+            {getPageTitle()}
+          </h1>
+          <p className="healthcare-subtitle">
+            Quản lý và theo dõi các lịch hẹn khám bệnh
+          </p>
         </div>
-        {user.role === 'patient' && (
-          <Button className="btn-healthcare" onClick={() => setOpenDialog(true)}>
-            <Calendar className="mr-2 h-4 w-4" />
-            Đặt lịch mới
+        {user.role === "patient" && (
+          <Button
+            className="btn-healthcare"
+            onClick={() => setOpenDialog(true)}
+          >
+            <Calendar className="mr-2 h-4 w-4" /> Đặt lịch mới
           </Button>
         )}
       </div>
 
       <Card className="healthcare-card">
         <CardHeader>
-          <CardTitle>Tất cả các cuộc hẹn</CardTitle>
+          <CardTitle className="text-2xl">Danh sách lịch hẹn</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="text-center py-8">Đang tải...</div>
-          ) : appointments && appointments.length > 0 ? (
+            <div className="text-center py-12">Đang tải dữ liệu...</div>
+          ) : appointments.length > 0 ? (
             <div className="space-y-4">
               {appointments.map((appointment) => (
                 <div
                   key={appointment._id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                  className="flex items-center justify-between p-5 border rounded-xl hover:bg-muted/50 transition-all shadow-sm"
                 >
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-gradient-primary rounded-lg flex items-center justify-center">
-                      <Clock className="h-6 w-6 text-white" />
+                  <div className="flex items-center gap-5">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Clock className="h-7 w-7 text-white" />
                     </div>
-                    <div>
-                      {user.role === 'doctor' ? (
-                        <>
-                          <div className="font-medium flex items-center">
-                            <User className="h-4 w-4 mr-2" />
-                            {appointment.patientId?.userId?.fullName || 'Không xác định'}
-                          </div>
-                          <div className="text-sm text-muted-foreground">{appointment.appointmentType}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {new Date(appointment.scheduledTime).toLocaleString('vi-VN')}
-                          </div>
-                        </>
+
+                    <div className="space-y-2">
+                      {/* Tên bác sĩ / bệnh nhân */}
+                      {user.role === "doctor" ? (
+                        <div className="font-semibold text-lg flex items-center gap-2">
+                          <User className="h-5 w-5 text-primary" />
+                          {appointment.patientId?.userId?.fullName ||
+                            "Không xác định"}
+                        </div>
                       ) : (
-                        <>
-                          <div className="font-medium">{appointment.doctorId?.userId?.fullName || 'Không xác định'}</div>
-                          <div className="text-sm text-muted-foreground">{appointment.appointmentType}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {new Date(appointment.scheduledTime).toLocaleString('vi-VN')}
-                          </div>
-                          {(user.role === 'admin' || user.role === 'charity_admin') && (
-                            <div className="text-sm text-muted-foreground">
-                              Bệnh nhân: {appointment.patientId?.userId?.fullName || 'Không xác định'}
-                            </div>
-                          )}
-                        </>
+                        <div className="font-semibold text-lg">
+                          BS.{" "}
+                          {appointment.doctorId?.userId?.fullName ||
+                            "Chưa phân công"}
+                        </div>
+                      )}
+
+                      {/* Loại khám */}
+                      {renderAppointmentType(appointment.appointmentType)}
+
+                      {/* Thời gian */}
+                      <div className="text-sm text-muted-foreground">
+                        {new Date(appointment.scheduledTime).toLocaleString(
+                          "vi-VN",
+                          {
+                            weekday: "short",
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          }
+                        )}
+                      </div>
+
+                      {/* Hiển thị tên bệnh nhân cho admin */}
+                      {(user.role === "admin" ||
+                        user.role === "charity_admin") && (
+                        <div className="text-sm text-muted-foreground">
+                          Bệnh nhân:{" "}
+                          {appointment.patientId?.userId?.fullName ||
+                            "Không xác định"}
+                        </div>
                       )}
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-2">
-                    <Badge
-                      className={
-                        appointment.status === 'confirmed'
-                          ? 'status-confirmed'
-                          : appointment.status === 'scheduled'
-                            ? 'status-scheduled'
-                            : appointment.status === 'cancelled'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-yellow-100 text-yellow-800'
-                      }
-                    >
-                      {appointment.status === 'confirmed' && 'Đã xác nhận'}
-                      {appointment.status === 'scheduled' && 'Đã đặt lịch'}
-                      {appointment.status === 'pending' && 'Chờ xác nhận'}
-                      {appointment.status === 'cancelled' && 'Đã hủy'}
-                    </Badge>
+                  <div className="flex items-center gap-4">
+                    {/* Trạng thái */}
+                    {renderStatusBadge(appointment.status)}
 
-                    {/* Không hiển thị nút cho lịch hẹn đã quá thời gian */}
+                    {/* Nút hành động */}
                     {!isAppointmentExpired(appointment.scheduledTime) && (
                       <>
-                        {/* Nút cho bác sĩ: Xác nhận và Từ chối nếu status là 'scheduled' */}
-                        {user.role === 'doctor' && appointment.status === 'scheduled' && (
-                          <div className="flex space-x-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleConfirmAppointment(appointment._id)}
-                              className="text-green-600 border-green-600 hover:bg-green-50"
-                            >
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Xác nhận
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleRejectAppointment(appointment._id)}
-                              className="text-red-600 border-red-600 hover:bg-red-50"
-                            >
-                              <XCircle className="h-4 w-4 mr-1" />
-                              Từ chối
-                            </Button>
-                          </div>
-                        )}
-
-                        {/* Nút cho bệnh nhân: Hủy nếu status là 'scheduled' */}
-                        {user.role === 'patient' && appointment.status === 'scheduled' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleCancelAppointment(appointment._id)}
-                            className="text-red-600 border-red-600 hover:bg-red-50"
-                          >
-                            <XCircle className="h-4 w-4 mr-1" />
-                            Hủy lịch
-                          </Button>
-                        )}
-
-                        {/* Nút cho admin: Chỉ hiển thị nút phù hợp với trạng thái */}
-                        {(user.role === 'admin' || user.role === 'charity_admin') && (
-                          <div className="flex space-x-2">
-                            {appointment.status !== 'confirmed' && appointment.status !== 'cancelled' && (
+                        {/* Bác sĩ */}
+                        {user.role === "doctor" &&
+                          appointment.status === "scheduled" && (
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  handleConfirmAppointment(appointment._id)
+                                }
+                              >
+                                <CheckCircle className="h-4 w-4 mr-1" /> Xác
+                                nhận
+                              </Button>
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => handleConfirmAppointment(appointment._id)}
-                                className="text-green-600 border-green-600 hover:bg-green-50"
+                                className="border-red-600 text-red-600 hover:bg-red-50"
+                                onClick={() =>
+                                  handleRejectAppointment(appointment._id)
+                                }
                               >
-                                <CheckCircle className="h-4 w-4 mr-1" />
+                                <XCircle className="h-4 w-4 mr-1" /> Từ chối
+                              </Button>
+                            </div>
+                          )}
+
+                        {/* Bệnh nhân */}
+                        {user.role === "patient" &&
+                          appointment.status === "scheduled" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-red-600 text-red-600 hover:bg-red-50"
+                              onClick={() =>
+                                handleCancelAppointment(appointment._id)
+                              }
+                            >
+                              <XCircle className="h-4 w-4 mr-1" /> Hủy lịch
+                            </Button>
+                          )}
+
+                        {/* Admin */}
+                        {(user.role === "admin" ||
+                          user.role === "charity_admin") &&
+                          ["scheduled", "pending"].includes(
+                            appointment.status
+                          ) && (
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  handleConfirmAppointment(appointment._id)
+                                }
+                              >
                                 Xác nhận
                               </Button>
-                            )}
-                            {appointment.status !== 'cancelled' && appointment.status !== 'confirmed' && (
                               <Button
                                 size="sm"
-                                variant="outline"
-                                onClick={() => handleRejectAppointment(appointment._id)}
-                                className="text-red-600 border-red-600 hover:bg-red-50"
+                                variant="destructive"
+                                onClick={() =>
+                                  handleRejectAppointment(appointment._id)
+                                }
                               >
-                                <XCircle className="h-4 w-4 mr-1" />
-                                Hủy/Từ chối
+                                Hủy
                               </Button>
-                            )}
-                          </div>
-                        )}
+                            </div>
+                          )}
                       </>
                     )}
                   </div>
                 </div>
               ))}
-              <div className="flex justify-between mt-4">
+
+              {/* Pagination */}
+              <div className="flex items-center justify-center gap-4 mt-8">
                 <Button
                   variant="outline"
                   disabled={pagination.page === 1}
@@ -308,12 +402,12 @@ export default function AppointmentsPage() {
                 >
                   Trước
                 </Button>
-                <span>
-                  Trang {pagination.page} / {pagination.pages}
+                <span className="text-sm font-medium">
+                  Trang {pagination.page} / {pagination.pages || 1}
                 </span>
                 <Button
                   variant="outline"
-                  disabled={pagination.page === pagination.pages}
+                  disabled={pagination.page >= pagination.pages}
                   onClick={() => handlePageChange(pagination.page + 1)}
                 >
                   Tiếp
@@ -321,12 +415,15 @@ export default function AppointmentsPage() {
               </div>
             </div>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              {user.role === 'patient' ? 'Bạn chưa có lịch hẹn nào' : 'Không có lịch hẹn nào'}
+            <div className="text-center py-16 text-muted-foreground text-lg">
+              {user.role === "patient"
+                ? "Bạn chưa có lịch hẹn nào"
+                : "Hiện chưa có lịch hẹn nào trong hệ thống"}
             </div>
           )}
         </CardContent>
       </Card>
+
       {openDialog && (
         <BookAppointmentForm
           open={openDialog}
@@ -335,7 +432,6 @@ export default function AppointmentsPage() {
           onSuccess={fetchAppointments}
         />
       )}
-      {!isAdmin && <ChatBubble />}
     </motion.div>
   );
 }

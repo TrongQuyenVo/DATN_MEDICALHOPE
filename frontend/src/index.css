@@ -9,39 +9,39 @@
     /* Core Healthcare Color Palette */
     --background: 210 20% 98%;
     --foreground: 215 25% 15%;
-    
+
     /* Healthcare Primary - Medical Blue */
     --primary: 210 85% 55%;
     --primary-light: 210 85% 65%;
     --primary-dark: 210 85% 45%;
     --primary-foreground: 0 0% 100%;
-    
+
     /* Healthcare Secondary - Caring Teal */
     --secondary: 180 60% 50%;
     --secondary-light: 180 60% 60%;
     --secondary-foreground: 0 0% 100%;
-    
+
     /* Healthcare Success - Life Green */
     --success: 140 70% 50%;
     --success-light: 140 70% 60%;
     --success-foreground: 0 0% 100%;
-    
+
     /* Healthcare Warning - Alert Orange */
     --warning: 35 90% 60%;
     --warning-light: 35 90% 70%;
     --warning-foreground: 0 0% 100%;
-    
+
     /* Healthcare Error - Critical Red */
     --destructive: 0 75% 55%;
     --destructive-light: 0 75% 65%;
     --destructive-foreground: 0 0% 100%;
-    
+
     /* Neutral Palette */
     --muted: 210 15% 95%;
     --muted-foreground: 215 15% 50%;
     --accent: 210 20% 92%;
     --accent-foreground: 215 25% 20%;
-    
+
     /* UI Elements */
     --card: 0 0% 100%;
     --card-foreground: 215 25% 15%;
@@ -50,28 +50,44 @@
     --border: 210 15% 88%;
     --input: 210 15% 88%;
     --ring: 210 85% 55%;
-    
+
     /* Healthcare Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(210 85% 55%), hsl(210 85% 65%));
-    --gradient-secondary: linear-gradient(135deg, hsl(180 60% 50%), hsl(180 60% 60%));
-    --gradient-hero: linear-gradient(135deg, hsl(210 85% 55%), hsl(180 60% 50%));
-    --gradient-success: linear-gradient(135deg, hsl(140 70% 50%), hsl(140 70% 60%));
-    
+    --gradient-primary: linear-gradient(
+      135deg,
+      hsl(210 85% 55%),
+      hsl(210 85% 65%)
+    );
+    --gradient-secondary: linear-gradient(
+      135deg,
+      hsl(180 60% 50%),
+      hsl(180 60% 60%)
+    );
+    --gradient-hero: linear-gradient(
+      135deg,
+      hsl(210 85% 55%),
+      hsl(180 60% 50%)
+    );
+    --gradient-success: linear-gradient(
+      135deg,
+      hsl(140 70% 50%),
+      hsl(140 70% 60%)
+    );
+
     /* Healthcare Shadows */
     --shadow-soft: 0 2px 8px hsl(210 15% 25% / 0.08);
     --shadow-medium: 0 4px 16px hsl(210 15% 25% / 0.12);
     --shadow-strong: 0 8px 32px hsl(210 15% 25% / 0.16);
     --shadow-primary: 0 4px 16px hsl(210 85% 55% / 0.25);
-    
+
     /* Animations */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bounce: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-    
+
     /* Border Radius */
     --radius: 0.75rem;
     --radius-lg: 1rem;
     --radius-xl: 1.25rem;
-    
+
     /* Sidebar Healthcare Theme */
     --sidebar-background: 210 25% 97%;
     --sidebar-foreground: 215 25% 25%;
@@ -87,33 +103,33 @@
     /* Dark Healthcare Theme */
     --background: 215 25% 8%;
     --foreground: 210 15% 92%;
-    
+
     --primary: 210 85% 60%;
     --primary-light: 210 85% 70%;
     --primary-dark: 210 85% 50%;
     --primary-foreground: 215 25% 8%;
-    
+
     --secondary: 180 60% 55%;
     --secondary-light: 180 60% 65%;
     --secondary-foreground: 215 25% 8%;
-    
+
     --success: 140 70% 55%;
     --success-light: 140 70% 65%;
     --success-foreground: 215 25% 8%;
-    
+
     --warning: 35 90% 65%;
     --warning-light: 35 90% 75%;
     --warning-foreground: 215 25% 8%;
-    
+
     --destructive: 0 75% 60%;
     --destructive-light: 0 75% 70%;
     --destructive-foreground: 0 0% 100%;
-    
+
     --muted: 215 25% 15%;
     --muted-foreground: 210 15% 65%;
     --accent: 215 25% 18%;
     --accent-foreground: 210 15% 85%;
-    
+
     --card: 215 25% 12%;
     --card-foreground: 210 15% 92%;
     --popover: 215 25% 12%;
@@ -121,13 +137,29 @@
     --border: 215 25% 20%;
     --input: 215 25% 20%;
     --ring: 210 85% 60%;
-    
+
     /* Dark Mode Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(210 85% 50%), hsl(210 85% 60%));
-    --gradient-secondary: linear-gradient(135deg, hsl(180 60% 45%), hsl(180 60% 55%));
-    --gradient-hero: linear-gradient(135deg, hsl(210 85% 50%), hsl(180 60% 45%));
-    --gradient-success: linear-gradient(135deg, hsl(140 70% 45%), hsl(140 70% 55%));
-    
+    --gradient-primary: linear-gradient(
+      135deg,
+      hsl(210 85% 50%),
+      hsl(210 85% 60%)
+    );
+    --gradient-secondary: linear-gradient(
+      135deg,
+      hsl(180 60% 45%),
+      hsl(180 60% 55%)
+    );
+    --gradient-hero: linear-gradient(
+      135deg,
+      hsl(210 85% 50%),
+      hsl(180 60% 45%)
+    );
+    --gradient-success: linear-gradient(
+      135deg,
+      hsl(140 70% 45%),
+      hsl(140 70% 55%)
+    );
+
     --sidebar-background: 215 25% 10%;
     --sidebar-foreground: 210 15% 85%;
     --sidebar-primary: 210 85% 60%;
@@ -148,13 +180,13 @@
     @apply bg-background text-foreground font-sans;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
-  
+
   /* Healthcare Typography */
   .healthcare-heading {
     @apply font-bold tracking-tight;
     color: hsl(var(--primary));
   }
-  
+
   .healthcare-subtitle {
     @apply text-muted-foreground;
   }
@@ -168,70 +200,92 @@
     transition: var(--transition-smooth);
     box-shadow: var(--shadow-soft);
   }
-  
+
   .btn-healthcare:hover {
     box-shadow: var(--shadow-primary);
     transform: translateY(-1px);
   }
-  
+
   .btn-charity {
     @apply bg-secondary hover:bg-secondary-light text-secondary-foreground;
     background: var(--gradient-secondary);
     transition: var(--transition-smooth);
   }
-  
+
   .btn-emergency {
     @apply bg-destructive hover:bg-destructive-light text-destructive-foreground;
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
-  
+
   /* Healthcare Cards */
   .healthcare-card {
     @apply bg-card border border-border rounded-lg;
     box-shadow: var(--shadow-soft);
     transition: var(--transition-smooth);
   }
-  
+
   .healthcare-card:hover {
     box-shadow: var(--shadow-medium);
     transform: translateY(-2px);
   }
-  
+
   .healthcare-card-primary {
     @apply healthcare-card;
     background: var(--gradient-primary);
     @apply text-primary-foreground border-primary/20;
   }
-  
+
   /* Status Indicators */
   .status-scheduled {
     @apply bg-warning/10 text-warning border-warning/20;
   }
-  
+
   .status-confirmed {
     @apply bg-primary/10 text-primary border-primary/20;
   }
-  
+
   .status-completed {
     @apply bg-success/10 text-success border-success/20;
   }
-  
+
   .status-cancelled {
     @apply bg-destructive/10 text-destructive border-destructive/20;
   }
-  
+
   /* Healthcare Animations */
   .fade-in {
     animation: fadeIn 0.5s ease-out;
   }
-  
+
   .slide-in-right {
     animation: slideInRight 0.3s ease-out;
   }
-  
+
   .bounce-in {
     animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
   }
+
+  .custom-scrollbar::-webkit-scrollbar {
+  width: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #c7d2fe, #e9d5ff);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #a5b4fc, #d8b4fe);
+  background-clip: content-box;
+}
+
 }
 
 @keyframes fadeIn {

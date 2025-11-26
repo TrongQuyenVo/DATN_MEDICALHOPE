@@ -524,77 +524,111 @@ export default function LandingPage() {
       <Header />
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-hero pt-32 pb-20 text-white">
-        <div className="absolute inset-0 bg-black/20" />
-        <div className="absolute inset-0 opacity-25">
-          <div className="absolute inset-0" style={{
+        <div className="absolute inset-0 bg-black/40" />
+        <div
+          className="absolute inset-0 opacity-40"
+          style={{
             backgroundImage: `url(${volunteerCampImg})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center'
-          }} />
-        </div>
-        <div className="container relative mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="mx-auto max-w-5xl text-center"
-          >
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+        />
+
+        <div className="container relative mx-auto px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
+
+            {/* LEFT CONTENT */}
             <motion.div
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="mb-8 inline-flex items-center gap-2 rounded-full bg-white/10 px-6 py-3 backdrop-blur-sm border border-white/20"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+              className="max-w-xl"
             >
-              <Shield className="h-5 w-5 text-green-300" />
-              <span className="text-sm font-medium">Bạn khỏe chúng tôi vui</span>
+              {/* Badge */}
+              <motion.div
+                initial={{ scale: 0.9 }}
+                animate={{ scale: 1 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="mb-6 inline-flex items-center gap-2 rounded-full bg-white/10 px-6 py-3 backdrop-blur-md border border-white/20"
+              >
+                <Shield className="h-5 w-5 text-green-300" />
+                <span className="text-sm font-medium">Bạn khỏe chúng tôi vui</span>
+              </motion.div>
+
+              {/* Heading */}
+              <h1 className="mb-6 text-5xl font-bold leading-tight tracking-tight md:text-6xl">
+                Chăm sóc sức khỏe
+                <span className="block bg-gradient-to-r from-white via-yellow-200 to-orange-200 bg-clip-text text-transparent mt-2">
+                  Miễn phí cho mọi người
+                </span>
+              </h1>
+
+              {/* Subtitle */}
+              <p className="mb-10 text-lg text-white/90 leading-relaxed">
+                MedicalHope+ kết nối những trái tim nhân ái, mang dịch vụ y tế chất lượng đến những người cần giúp đỡ nhất.
+              </p>
+
+              {/* CTA Buttons */}
+              <div className="flex flex-col sm:flex-row gap-5">
+                <Button
+                  size="lg"
+                  className="btn-charity text-lg px-10 py-6 h-auto rounded-full shadow-xl hover:shadow-secondary/40 transition-all duration-300"
+                  onClick={() => navigate("/register")}
+                >
+                  Tham gia ngay - Miễn phí
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+
+                <Button
+                  size="lg"
+                  className="text-lg px-10 py-6 h-auto rounded-full text-white border border-white/30 hover:bg-white/20 shadow-xl"
+                  onClick={() => navigate("/services")}
+                >
+                  Khám phá dịch vụ
+                </Button>
+              </div>
             </motion.div>
-            <h1 className="mb-8 text-6xl font-bold leading-tight tracking-tight md:text-7xl lg:text-7xl">
-              Chăm sóc sức khỏe
-              <span className="block bg-gradient-to-r from-white via-yellow-200 to-orange-200 bg-clip-text text-transparent mt-2">
-                Miễn phí cho mọi người
-              </span>
-            </h1>
-            <p className="mb-10 text-xl text-white/90 md:text-2xl leading-relaxed max-w-4xl mx-auto">
-              MedicalHope+ kết nối những trái tim nhân ái, mang dịch vụ y tế chất lượng cao đến với những người cần giúp đỡ nhất, không phân biệt hoàn cảnh.
-            </p>
-            <div className="flex flex-col gap-6 sm:flex-row sm:justify-center items-center mb-10">
-              <Button
-                size="lg"
-                className="btn-charity text-lg px-10 py-6 h-auto rounded-full shadow-2xl hover:shadow-secondary/40 transition-all duration-300"
-                onClick={() => navigate('/register')}
-              >
-                Tham gia ngay - Miễn phí
-                <ArrowRight className="ml-3 h-6 w-6" />
-              </Button>
-              <Button
-                size="lg"
-                className="text-lg px-10 py-6 h-auto rounded-full text-white shadow-2xl hover:bg-white/30 hover:border-white"
-                onClick={() => navigate('/services')}
-              >
-                Khám phá dịch vụ
-              </Button>
+
+            {/* RIGHT IMAGE / DECOR */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="w-full flex justify-center"
+            >
+              <div className="w-full max-w-md bg-white/10 border border-white/20 backdrop-blur-xl p-6 rounded-3xl shadow-2xl">
+                <img
+                  src={volunteerCampImg}
+                  className="rounded-2xl w-full object-cover"
+                  alt="MedicalHope volunteer"
+                />
+              </div>
+            </motion.div>
+
+          </div>
+
+          {/* Stats Row */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-20 text-center">
+            <div className="flex flex-col items-center bg-white/5 backdrop-blur-sm p-4 rounded-xl border border-white/10 shadow-md">
+              <CheckCircle2 className="h-6 w-6 text-green-300 mb-1" />
+              <span className="text-sm">100% Miễn phí</span>
             </div>
-            <div className="flex flex-wrap justify-center gap-6 mt-16">
-              <div className="flex items-center gap-2 bg-white/5 backdrop-blur-sm px-4 py-2 rounded-full border border-white/10">
-                <CheckCircle2 className="h-5 w-5 text-green-300" />
-                <span className="text-sm">100% Miễn phí</span>
-              </div>
-              <div className="flex items-center gap-2 bg-white/5 backdrop-blur-sm px-4 py-2 rounded-full border border-white/10">
-                <Shield className="h-5 w-5 text-blue-300" />
-                <span className="text-sm">Bác sĩ chuyên môn cao</span>
-              </div>
-              <div className="flex items-center gap-2 bg-white/5 backdrop-blur-sm px-4 py-2 rounded-full border border-white/10">
-                <Award className="h-5 w-5 text-yellow-300" />
-                <span className="text-sm">Được cộng đồng tin cậy</span>
-              </div>
-              <div className="flex items-center gap-2 bg-white/5 backdrop-blur-sm px-4 py-2 rounded-full border border-white/10">
-                <HeartHandshake className="h-5 w-5 text-red-300" />
-                <span className="text-sm">Tận tâm vì cộng đồng</span>
-              </div>
+            <div className="flex flex-col items-center bg-white/5 backdrop-blur-sm p-4 rounded-xl border border-white/10 shadow-md">
+              <Shield className="h-6 w-6 text-blue-300 mb-1" />
+              <span className="text-sm">Bác sĩ chuyên môn cao</span>
             </div>
-          </motion.div>
+            <div className="flex flex-col items-center bg-white/5 backdrop-blur-sm p-4 rounded-xl border border-white/10 shadow-md">
+              <Award className="h-6 w-6 text-yellow-300 mb-1" />
+              <span className="text-sm">Được cộng đồng tin cậy</span>
+            </div>
+            <div className="flex flex-col items-center bg-white/5 backdrop-blur-sm p-4 rounded-xl border border-white/10 shadow-md">
+              <HeartHandshake className="h-6 w-6 text-red-300 mb-1" />
+              <span className="text-sm">Tận tâm vì cộng đồng</span>
+            </div>
+          </div>
         </div>
       </section>
+
       {/* === HOẠT ĐỘNG ĐANG DIỄN RA (MỚI) === */}
       <section className="py-20 bg-gradient-to-br from-primary/10 via-background to-secondary/10">
         <div className="container mx-auto px-4">
@@ -608,7 +642,7 @@ export default function LandingPage() {
               <Sparkles className="h-5 w-5 text-orange-600" />
               <span className="text-sm font-bold text-orange-600">ĐANG DIỄN RA</span>
             </div>
-            <h2 className="healthcare-heading text-4xl font-bold mb-4">
+            <h2 className=" text-4xl font-bold mb-4">
               Hoạt Động Thiện Nguyện Đang Diễn Ra
             </h2>
             <p className="text-xl text-muted-foreground">
@@ -654,7 +688,7 @@ export default function LandingPage() {
               <Heart className="h-5 w-5" />
               <span className="text-sm font-medium">Hỗ trợ y tế miễn phí</span>
             </div>
-            <h2 className="healthcare-heading text-4xl font-bold mb-4">
+            <h2 className="text-4xl font-bold mb-4">
               Chúng tôi ở đây để giúp bạn
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
@@ -748,6 +782,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
       {/* Support Requests Section */}
       <section className="py-20 bg-gradient-to-br from-primary/5 via-background to-secondary/5">
         <div className="container mx-auto px-4">
@@ -761,7 +796,7 @@ export default function LandingPage() {
               <DollarSign className="h-5 w-5 text-primary" />
               <span className="text-sm font-medium text-primary">Kêu gọi hỗ trợ</span>
             </div>
-            <h2 className="healthcare-heading text-4xl font-bold mb-4">
+            <h2 className=" text-4xl font-bold mb-4">
               Yêu Cầu Hỗ Trợ Cần Ủng Hộ
             </h2>
             <p className="text-xl text-muted-foreground">
@@ -797,10 +832,7 @@ export default function LandingPage() {
                         transition={{ delay: index * 0.1 }}
                         className="group"
                       >
-                        <div
-                          className="cursor-pointer"
-                          onClick={() => navigate(`/assistance/${request._id}`)}
-                        >
+                        <div className="cursor-pointer">
                           <Card className="healthcare-card h-full group-hover:shadow-2xl group-hover:border-primary transition-all duration-300 border-2">
                             <CardContent className="pt-6">
                               <div className="flex items-center justify-between mb-4">
@@ -1172,7 +1204,7 @@ export default function LandingPage() {
               <Users className="h-5 w-5 text-primary" />
               <span className="text-sm font-medium text-primary">Chia sẻ từ trái tim</span>
             </div>
-            <h2 className="healthcare-heading text-4xl font-bold mb-4">
+            <h2 className=" text-4xl font-bold mb-4">
               Câu chuyện của những người thụ hưởng
             </h2>
             <p className="text-xl text-muted-foreground">

@@ -305,23 +305,38 @@ export default function PackageManagement() {
                         <button
                           key={pkg._id}
                           onClick={() => setSelectedPackageId(pkg._id)}
-                          className={`w-full text-left p-5 rounded-xl border-2 transition-all duration-200 ${selectedPackageId === pkg._id
-                            ? 'bg-emerald-50 border-emerald-500 shadow-md'
-                            : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                          className={`w-full text-left p-5 rounded-2xl border-2 transition-all duration-300 group
+                              ${selectedPackageId === pkg._id
+                              ? 'bg-emerald-50 border-emerald-500 shadow-lg ring-2 ring-emerald-200'
+                              : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300 hover:shadow-md'
                             }`}
                         >
-                          <div className="flex items-center gap-4">
+                          <div className="flex items-start gap-4">
+                            {/* Ảnh gói khám */}
                             {pkg.image ? (
-                              <img src={getImageUrl(pkg.image)} alt="" className="w-12 h-12 object-cover rounded-lg shadow-sm" />
+                              <img
+                                src={getImageUrl(pkg.image)}
+                                alt={pkg.title}
+                                className="w-14 h-14 object-cover rounded-xl shadow-md flex-shrink-0 border-2 border-white mt-1"
+                              />
                             ) : (
-                              <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
-                                <Package className="h-6 w-6 text-gray-400" />
+                              <div className="w-14 h-14 bg-gradient-to-br from-emerald-400 to-blue-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md mt-1">
+                                <Package className="h-7 w-7 text-white" />
                               </div>
                             )}
+
+                            {/* Nội dung */}
                             <div className="flex-1 min-w-0">
-                              <div className="font-semibold text-gray-900 truncate">{pkg.title}</div>
-                              <div className="text-sm text-gray-600 flex items-center gap-1 mt-1">
-                                <Users className="h-3.5 w-3.5" /> {count} đơn
+                              {/* TIÊU ĐỀ HIỆN 2 DÒNG – KHÔNG BỊ CẮT */}
+                              <h3 className="font-bold text-gray-900 text-base leading-tight line-clamp-2">
+                                {pkg.title}
+                              </h3>
+
+                              {/* Số lượng đơn */}
+                              <div className="flex items-center gap-2 mt-2">
+                                <Users className="h-4 w-4 text-emerald-600" />
+                                <span className="font-semibold text-emerald-700">{count}</span>
+                                <span className="text-gray-500 text-xs">đơn đăng ký</span>
                               </div>
                             </div>
                           </div>

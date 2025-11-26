@@ -210,7 +210,7 @@ export default function DonationsPage() {
       </Card>
 
       <ScrollToTop />
-      {!isAdmin && <ChatBubble />}
+      {/* {!isAdmin && <ChatBubble />} */}
     </motion.div>
   );
 }

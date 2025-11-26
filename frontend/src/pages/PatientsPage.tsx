@@ -489,7 +489,7 @@ export default function PatientsPage() {
         />
       )}
       <ScrollToTop />
-      <ChatBubble />
+      {/* <ChatBubble /> */}
     </motion.div>
   );
 }

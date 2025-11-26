@@ -6,9 +6,13 @@ exports.createDonation = async (req, res) => {
   try {
     const {
       amount,
-      assistanceId, // NHẬN TỪ FRONTEND
-      isAnonymous,
+      assistanceId,
+      isAnonymous = false,
       paymentMethod,
+      donorName,
+      donorEmail,
+      donorPhone,
+      message,
     } = req.body;
 
     if (paymentMethod !== "vnpay") {
@@ -23,35 +27,37 @@ exports.createDonation = async (req, res) => {
         .json({ success: false, message: "Số tiền không hợp lệ" });
     }
 
-    // TẠO DONATION
+    // Kiểm tra assistance tồn tại và chưa đủ tiền
+    const assistance = await PatientAssistance.findById(assistanceId);
+    if (!assistance) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Không tìm thấy yêu cầu hỗ trợ" });
+    }
+
+    // Tạo donation (chưa completed)
     const donation = new Donation({
-      userId: req.user._id,
-      assistanceId, // GÁN
+      userId: req.user?._id || null, // có thể null
+      assistanceId,
       amount,
-      isAnonymous: isAnonymous || false,
       paymentMethod,
-      status: "completed",
+      isAnonymous,
+      donorName: isAnonymous ? null : donorName || null,
+      donorEmail: isAnonymous ? null : donorEmail || null,
+      donorPhone: isAnonymous ? null : donorPhone || null,
+      message: message || null,
+      status: "pending", // chờ VNPay callback
     });
 
     await donation.save();
 
-    // CẬP NHẬT ASSISTANCE
-    if (assistanceId) {
-      const assistance = await PatientAssistance.findById(assistanceId);
-      if (assistance) {
-        assistance.raisedAmount += amount;
-        assistance.donationIds.push(donation._id);
-        await assistance.save();
-      }
-    }
-
-    const payUrl = `https://sandbox.vnpayment.vn/pay/${donation._id}`;
-
+    // Trả về URL thanh toán VNPay thật (sẽ làm ở bước sau)
+    // Tạm thời trả về donation + thông báo
     return res.status(201).json({
       success: true,
-      message: "Tạo quyên góp thành công",
-      donation,
-      payUrl,
+      message: "Tạo đơn quyên góp thành công, chuyển đến cổng thanh toán...",
+      donation: donation,
+      // payUrl: realVnpayUrl,
     });
   } catch (error) {
     console.error("Create donation error:", error);

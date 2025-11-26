@@ -10,7 +10,7 @@ router.get(
   authorize("doctor"),
   doctorController.getDoctorProfile
 );
-
+router.get("/:id", doctorController.getDoctorById);
 router.put(
   "/profile",
   auth,

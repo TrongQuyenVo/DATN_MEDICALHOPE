@@ -331,11 +331,12 @@ function formatRelativeTime(date) {
   return new Date(date).toLocaleDateString("vi-VN");
 }
 
+// RECENT ACTIVITIES – ĐÃ SỬA ĐOẠN DONATION
 router.get("/recent-activities", auth, authorize("admin"), async (req, res) => {
   try {
     const activities = [];
 
-    // Người dùng mới
+    // 1. Người dùng mới
     const recentUsers = await User.find({ isActive: true })
       .sort({ createdAt: -1 })
       .limit(5)
@@ -350,24 +351,30 @@ router.get("/recent-activities", auth, authorize("admin"), async (req, res) => {
       })
     );
 
-    // Quyên góp mới
+    // 2. Quyên góp mới – ĐÃ SỬA TẠI ĐÂY
     const recentDonations = await Donation.find({ status: "completed" })
       .sort({ createdAt: -1 })
-      .limit(3)
-      .select("amount donorName createdAt _id");
-    recentDonations.forEach((d) =>
+      .limit(5)
+      .populate("userId", "fullName")
+      .populate("assistanceId", "title")
+      .select("amount userId assistanceId createdAt _id");
+
+    recentDonations.forEach((d) => {
+      const donorName = d.userId?.fullName || "Người dùng đã xóa";
+      const assistTitle = d.assistanceId?.title 
+        ? ` cho "${d.assistanceId.title}"` 
+        : "";
+
       activities.push({
         id: `donation-${d._id}`,
-        message: `Nhận ${(d.amount / 1e6).toFixed(1)}M VNĐ từ ${
-          d.donorName || "Ẩn danh"
-        }`,
+        message: `${donorName} đã ủng hộ ${d.amount.toLocaleString('vi-VN')}₫${assistTitle}`,
         time: formatRelativeTime(d.createdAt),
         timestamp: d.createdAt,
         status: "success",
-      })
-    );
+      });
+    });
 
-    // Yêu cầu hỗ trợ mới
+    // 3. Yêu cầu hỗ trợ mới (giữ nguyên)
     const recentAssistance = await PatientAssistance.find({ status: "pending" })
       .sort({ createdAt: -1 })
       .limit(2)
@@ -382,12 +389,13 @@ router.get("/recent-activities", auth, authorize("admin"), async (req, res) => {
       })
     );
 
-    // SORT THEO timestamp (Date object)
+    // Sắp xếp theo thời gian
     activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
     res.json(activities.slice(0, 10));
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Recent activities error:", error);
+    res.status(500).json({ message: "Lỗi server" });
   }
 });
 

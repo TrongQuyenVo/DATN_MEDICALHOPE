@@ -28,9 +28,9 @@ exports.createAssistanceRequest = async (req, res) => {
       medicalCondition: req.body.medicalCondition, // THÊM CONDITION
       attachments: req.files
         ? req.files.map((file) => ({
-            originalName: file.originalname,
-            filePath: file.path.replace(/\\/g, "/"),
-            mimeType: file.mimetype,
+            filename: file.originalname, // ← ĐÚNG tên trường
+            path: `/uploads/assistance/${file.filename}`, // ← ĐÚNG tên trường
+            size: file.size, // ← thêm size
           }))
         : [],
       status: "pending",

@@ -212,3 +212,55 @@ exports.updateDoctorAvailability = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+exports.getDoctorById = async (req, res) => {
+  try {
+    const doctor = await Doctor.findById(req.params.id)
+      .populate({
+        path: "userId",
+        select:
+          "fullName email phone avatar profile.address profile.gender profile.dateOfBirth",
+      })
+      .lean();
+
+    if (!doctor) {
+      return res.status(404).json({
+        success: false,
+        message: "Bác sĩ không tồn tại",
+      });
+    }
+
+    // Lấy 5 ngày rảnh gần nhất còn slot trống
+    const upcomingSlots = (doctor.availableSlots || [])
+      .filter((slot) => slot.isActive && slot.times && slot.times.length > 0)
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .slice(0, 5)
+      .map((slot) => ({
+        date: slot.date,
+        displayDate: moment(slot.date).format("DD/MM/YYYY"),
+        dayOfWeek: moment(slot.date).format("dddd"),
+        times: slot.times,
+      }));
+
+    const formattedDoctor = {
+      ...doctor,
+      location: doctor.userId?.profile?.address || "Toàn quốc",
+      fullName: doctor.userId?.fullName || "Bác sĩ MedicalHope+",
+      email: doctor.userId?.email || null,
+      phone: doctor.userId?.phone || null,
+      avatar: doctor.userId?.avatar || null,
+      bio: doctor.notes || doctor.bio || null, // dùng notes hoặc bio đều được
+      upcomingSlots,
+      totalPatients: doctor.totalPatients || 0,
+      volunteerHours: doctor.volunteerHours || 0,
+    };
+
+    res.json({
+      success: true,
+      doctor: formattedDoctor,
+    });
+  } catch (error) {
+    console.error("Get doctor detail error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
