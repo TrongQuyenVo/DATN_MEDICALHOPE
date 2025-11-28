@@ -18,16 +18,17 @@ exports.createDonation = async (req, res) => {
     if (paymentMethod !== "vnpay") {
       return res
         .status(400)
-        .json({ success: false, message: "Chỉ hỗ trợ VNPAY" });
+        .json({ success: false, message: "Chỉ hỗ trợ thanh toán qua VNPAY" });
     }
 
+    // 2. Kiểm tra số tiền
     if (!amount || amount <= 0) {
       return res
         .status(400)
-        .json({ success: false, message: "Số tiền không hợp lệ" });
+        .json({ success: false, message: "Số tiền quyên góp không hợp lệ" });
     }
 
-    // Kiểm tra assistance tồn tại và chưa đủ tiền
+    // 3. Kiểm tra assistance tồn tại
     const assistance = await PatientAssistance.findById(assistanceId);
     if (!assistance) {
       return res
@@ -35,33 +36,49 @@ exports.createDonation = async (req, res) => {
         .json({ success: false, message: "Không tìm thấy yêu cầu hỗ trợ" });
     }
 
-    // Tạo donation (chưa completed)
+    // 4. Kiểm tra không vượt quá số tiền còn thiếu (tùy chọn - frontend cũng đã validate)
+    const remaining = assistance.requestedAmount - assistance.raisedAmount;
+    if (amount > remaining) {
+      return res.status(400).json({
+        success: false,
+        message: `Số tiền quyên góp vượt quá số còn thiếu (${remaining.toLocaleString()}đ)`,
+      });
+    }
+
+    // 5. Tạo donation (pending)
     const donation = new Donation({
-      userId: req.user?._id || null, // có thể null
+      userId: req.user?._id || null,
       assistanceId,
       amount,
-      paymentMethod,
+      paymentMethod: "vnpay",
+      status: "pending",
       isAnonymous,
-      donorName: isAnonymous ? null : donorName || null,
-      donorEmail: isAnonymous ? null : donorEmail || null,
-      donorPhone: isAnonymous ? null : donorPhone || null,
-      message: message || null,
-      status: "pending", // chờ VNPay callback
+      donorName: isAnonymous ? null : donorName?.trim() || null,
+      donorEmail: isAnonymous ? null : donorEmail?.trim() || null,
+      donorPhone: isAnonymous ? null : donorPhone?.trim() || null,
+      message: message?.trim() || null,
     });
 
     await donation.save();
 
-    // Trả về URL thanh toán VNPay thật (sẽ làm ở bước sau)
-    // Tạm thời trả về donation + thông báo
+    // 6. Trả về donation để frontend dùng tạo URL VNPay
     return res.status(201).json({
       success: true,
-      message: "Tạo đơn quyên góp thành công, chuyển đến cổng thanh toán...",
-      donation: donation,
-      // payUrl: realVnpayUrl,
+      message: "Tạo đơn quyên góp thành công",
+      donation: {
+        _id: donation._id,
+        amount: donation.amount,
+        assistanceId: donation.assistanceId,
+        status: donation.status,
+        createdAt: donation.createdAt,
+      },
     });
   } catch (error) {
     console.error("Create donation error:", error);
-    return res.status(500).json({ success: false, message: "Lỗi máy chủ" });
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi máy chủ, vui lòng thử lại sau",
+    });
   }
 };
 
@@ -110,43 +127,61 @@ exports.getDonations = async (req, res) => {
   }
 };
 
-// Update donation status
-exports.updateDonationStatus = async (req, res) => {
+exports.createConfirmedDonation = async (req, res) => {
   try {
-    const { status } = req.body;
-    const donation = await Donation.findById(req.params.id);
+    const {
+      assistanceId,
+      amount,
+      isAnonymous,
+      donorName,
+      donorEmail,
+      donorPhone,
+      message,
+      vnp_TxnRef,
+      vnp_TransactionNo,
+      vnp_BankCode,
+      vnp_PayDate,
+    } = req.body;
 
-    if (!donation) {
-      return res.status(404).json({
-        success: false,
-        message: "Không tìm thấy quyên góp",
-      });
+    // Kiểm tra trùng lặp (theo vnp_TxnRef)
+    const existed = await Donation.findOne({
+      "paymentInfo.vnp_TxnRef": vnp_TxnRef,
+    });
+    if (existed) {
+      return res
+        .status(200)
+        .json({ success: true, message: "Đã xử lý trước đó" });
     }
 
-    // Chỉ admin mới được đổi status
-    if (req.user.role !== "admin") {
-      return res.status(403).json({
-        success: false,
-        message: "Không có quyền thực hiện thao tác này",
-      });
-    }
+    const donation = new Donation({
+      assistanceId,
+      amount,
+      paymentMethod: "vnpay",
+      status: "completed",
+      isAnonymous,
+      donorName: isAnonymous ? null : donorName,
+      donorEmail: isAnonymous ? null : donorEmail,
+      donorPhone: isAnonymous ? null : donorPhone,
+      message,
+      paymentInfo: {
+        vnp_TxnRef,
+        vnp_TransactionNo,
+        vnp_BankCode,
+        vnp_PayDate,
+        paidAt: new Date(),
+      },
+    });
 
-    donation.status = status;
-    if (status === "completed") {
-      donation.confirmedAt = new Date();
-    }
     await donation.save();
 
-    return res.json({
-      success: true,
-      message: "Cập nhật trạng thái quyên góp thành công",
-      donation,
+    // Cộng tiền vào assistance
+    await PatientAssistance.findByIdAndUpdate(assistanceId, {
+      $inc: { raisedAmount: amount },
     });
+
+    return res.json({ success: true, donation });
   } catch (error) {
-    console.error("Update donation error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Lỗi máy chủ",
-    });
+    console.error("Create confirmed donation error:", error);
+    return res.status(500).json({ success: false, message: "Lỗi server" });
   }
 };

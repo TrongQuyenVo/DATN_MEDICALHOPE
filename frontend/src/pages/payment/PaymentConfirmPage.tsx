@@ -1,63 +1,63 @@
-/* eslint-disable react-hooks/exhaustive-deps */
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import queryString from "query-string";
-import { ENV } from "@/config/ENV";
-import { calculateVnpSecureHash } from "@/utils/calculateVnpSecureHash";
-import { sortObject } from "@/utils/sortObject";
-import { useAppStore } from "@/stores/appStore";
-
-// Định nghĩa kiểu cho các tham số query
-interface VnpParams {
-  [key: string]: string | undefined;
-}
+import toast from "react-hot-toast";
+import { donationsAPI } from "@/lib/api";
 
 const PaymentConfirmPage: React.FC = () => {
   const location = useLocation();
-  const queries = queryString.parse(location.search) as VnpParams;
-  const vnp_HashSecret = ENV.vnp_HashSecret || "";
   const navigate = useNavigate();
-  const { paymentInfo } = useAppStore();
-
-  const verifyPayment = async () => {
-    const { vnp_SecureHash, ...vnp_Params } = queries;
-    const sortedParams = sortObject(vnp_Params)
-      .map(
-        (key: string) =>
-          `${key}=${encodeURIComponent(vnp_Params[key] as string)}`
-      )
-      .join("&");
-    const signed = calculateVnpSecureHash(sortedParams, vnp_HashSecret);
-    if (vnp_SecureHash === signed) {
-      const { vnp_TransactionStatus } = vnp_Params;
-      if (vnp_TransactionStatus === "00") {
-        console.log(paymentInfo);
-        navigate("/payment-success");
-      } else {
-        navigate("/payment-failed");
-      }
-    } else {
-      navigate("/payment-invalid");
-    }
-  };
+  const queries = queryString.parse(location.search);
 
   useEffect(() => {
-    if (queries.vnp_SecureHash) {
-      verifyPayment();
+    const pendingData = localStorage.getItem("pending_payment");
+    if (!pendingData) {
+      toast.error("Không tìm thấy thông tin thanh toán");
+      navigate("/");
+      return;
     }
-  }, []);
+
+    const paymentData = JSON.parse(pendingData);
+
+    // Kiểm tra kết quả từ VNPay
+    if (queries.vnp_TransactionStatus === "00" && queries.vnp_ResponseCode === "00") {
+      // Thanh toán thành công → tạo donation
+      donationsAPI
+        .createConfirmed({
+          ...paymentData,
+          vnp_TxnRef: queries.vnp_TxnRef,
+          vnp_TransactionNo: queries.vnp_TransactionNo,
+          vnp_BankCode: queries.vnp_BankCode,
+          vnp_PayDate: queries.vnp_PayDate,
+        })
+        .then(() => {
+          toast.success("Quyên góp thành công! Cảm ơn tấm lòng của bạn ❤️");
+          localStorage.removeItem("pending_payment");
+          navigate("/payment-success");
+        })
+        .catch((err) => {
+          toast.error("Lưu thông tin quyên góp thất bại, vui lòng liên hệ admin");
+          console.error(err);
+        });
+    } else {
+      toast.error("Thanh toán không thành công hoặc đã bị hủy");
+      localStorage.removeItem("pending_payment");
+      navigate("/payment-failed");
+    }
+  }, [queries, navigate]);
 
   return (
-    <div className="flex mobile:flex-col w-full h-screen bg-white p-5">
-      <div className="flex mobile:w-full w-6/12 mx-auto justify-center items-center ">
-        <div className="w-[400px]">
-          <video
-            className="object-cover"
-            src="https://cdnl.iconscout.com/lottie/premium/thumb/payment-received-8453779-6725893.mp4"
-            autoPlay
-            loop
-          />
-        </div>
+    <div className="flex items-center justify-center h-screen bg-gradient-to-br from-blue-50 to-pink-50">
+      <div className="text-center">
+        <video
+          className="w-64 mx-auto"
+          src="https://cdnl.iconscout.com/lottie/premium/thumb/payment-processing-8453781-6725895.mp4"
+          autoPlay
+          loop
+          muted
+        />
+        <p className="text-2xl font-bold text-gray-800 mt-8">Đang xử lý thanh toán...</p>
+        <p className="text-gray-600">Vui lòng đợi một chút nhé</p>
       </div>
     </div>
   );

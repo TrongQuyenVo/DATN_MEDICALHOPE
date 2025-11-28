@@ -65,7 +65,6 @@ export function Sidebar({ className }: SidebarProps) {
         { path: '/patients', icon: Users, label: t('patients') },
         { path: '/donations', icon: Gift, label: t('donations') },
         { path: '/assistance', icon: HandHeart, label: t('assistance') },
-        { path: '/partners', icon: Building2, label: 'Quản lý đối tác' },
       ],
     };
 

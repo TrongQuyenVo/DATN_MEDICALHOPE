@@ -133,7 +133,8 @@ export const appointmentsAPI = {
 export const donationsAPI = {
   create: (data: any) => api.post('/donations', data),
   getAll: (params?: any) => api.get('/donations', { params }),
-  updateStatus: (id: string, data: any) => api.patch(`/donations/${id}/status`, data),
+
+  createConfirmed: (data: any) => api.post('/donations/confirmed', data),
 };
 
 // ==========================

@@ -14,11 +14,6 @@ router.get(
   donationController.getDonations
 );
 
-router.patch(
-  "/:id/status",
-  auth,
-  authorize("admin", "charity_admin"),
-  donationController.updateDonationStatus
-);
+router.post("/confirmed", donationController.createConfirmedDonation);
 
 module.exports = router;
