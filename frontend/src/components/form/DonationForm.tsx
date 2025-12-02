@@ -1,5 +1,5 @@
-// components/donations/DonationForm.tsx
 /* eslint-disable @typescript-eslint/no-explicit-any */
+// components/donations/DonationForm.tsx (updated: use backend-generated URL, remove local VNPAY logic)
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -26,9 +26,8 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import toast from "react-hot-toast";
-import { ENV } from "@/config/ENV";
-import { calculateVnpSecureHash } from "@/utils/calculateVnpSecureHash";
 import { useAuthStore } from "@/stores/authStore";
+import { donationsAPI } from "@/lib/api"; // Assume you have donationAPI
 import { assistanceAPI } from "@/lib/api";
 import { useAppStore } from "@/stores/appStore";
 import VNpay from "@/assets/vnpay-logo.png";
@@ -55,7 +54,6 @@ interface FormData {
   donorEmail: string;
   donorPhone: string;
   message: string;
-  paymentMethod: string;
 }
 
 const schema = yup.object({
@@ -89,7 +87,6 @@ const schema = yup.object({
   }),
 
   message: yup.string(),
-  paymentMethod: yup.string().required("Vui lòng chọn phương thức thanh toán"),
 });
 
 export default function DonationForm({ open, onOpenChange, assistanceId }: DonationFormProps) {
@@ -114,7 +111,6 @@ export default function DonationForm({ open, onOpenChange, assistanceId }: Donat
 
   const watchedAmount = watch("amount");
 
-  // === GIỮ NGUYÊN LOGIC CŨ 100% ===
   useEffect(() => {
     if (open && assistanceId) {
       const fetchAssistance = async () => {
@@ -163,80 +159,42 @@ export default function DonationForm({ open, onOpenChange, assistanceId }: Donat
   }, [open, reset]);
 
   const quickAmounts = [50000, 100000, 200000, 500000, 1000000];
-  const paymentMethods = [{ value: "vnpay", label: "VNPay", icon: "Card" }];
 
   const handleQuickAmount = (amount: number) => {
     setSelectedAmount(amount);
     setValue("amount", amount);
   };
 
-  const { setPaymentInfo } = useAppStore();
-
-  // === GIỮ NGUYÊN TOÀN BỘ LOGIC SUBMIT + VNPAY ===
   const onSubmit = async (data: FormData) => {
     if (!assistance) return;
 
     setIsSubmitting(true);
 
     try {
-      const { vnp_TmnCode, vnp_HashSecret, vnp_Url, BASE_URL } = ENV;
-      if (!vnp_HashSecret || !vnp_Url || !vnp_TmnCode) {
-        toast.error("Cấu hình thanh toán bị thiếu");
-        return;
-      }
+      // Call backend to create donation and get paymentUrl
 
-      // Tạo orderId ngẫu nhiên hoặc timestamp + random
-      const orderId = Date.now().toString() + Math.floor(Math.random() * 1000);
-
-      // Lưu tạm thông tin vào localStorage hoặc context để dùng khi callback
-      const tempPaymentData = {
-        assistanceId: assistance._id,
+      const res = await donationsAPI.create({
         amount: data.amount,
-        isAnonymous: isAnonymous,
-        donorName: isAnonymous ? null : data.donorName?.trim() || null,
-        donorEmail: isAnonymous ? null : data.donorEmail?.trim() || null,
-        donorPhone: isAnonymous ? null : data.donorPhone?.trim() || null,
-        message: data.message?.trim() || null,
-        orderId,
-        createdAt: new Date().toISOString(),
-      };
+        assistanceId: assistance._id,
+        isAnonymous,
+        donorName: !isAnonymous ? data.donorName : undefined,
+        donorEmail: !isAnonymous ? data.donorEmail : undefined,
+        donorPhone: !isAnonymous ? data.donorPhone : undefined,
+        message: data.message,
+      });
 
-      // Lưu tạm vào localStorage (vì sau redirect sẽ mất state)
-      localStorage.setItem("pending_payment", JSON.stringify(tempPaymentData));
+      if (res.data.success && res.data.paymentUrl) {
+        window.location.href = res.data.paymentUrl;
+      }// Assume donationAPI.post("/", payload)
 
-      // Tạo URL thanh toán
-      const createDate = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, "");
-      const returnUrl = `${BASE_URL}/xac-nhan-thanh-toan`;
-
-      const paymentData: any = {
-        vnp_Amount: data.amount * 100,
-        vnp_Command: "pay",
-        vnp_CreateDate: createDate,
-        vnp_CurrCode: "VND",
-        vnp_IpAddr: "127.0.0.1",
-        vnp_Locale: "vn",
-        vnp_OrderInfo: `Quyen gop cho benh nhan - ${assistance.title}`,
-        vnp_OrderType: "250000",
-        vnp_ReturnUrl: returnUrl,
-        vnp_TxnRef: orderId, // quan trọng: dùng orderId này để đối chiếu
-        vnp_Version: "2.1.0",
-        vnp_TmnCode: vnp_TmnCode,
-      };
-
-      const sortedParams = Object.keys(paymentData)
-        .sort((a, b) => a.localeCompare(b))
-        .map(key => `${key}=${encodeURIComponent(paymentData[key])}`)
-        .join("&");
-
-      const vnp_SecureHash = calculateVnpSecureHash(sortedParams, vnp_HashSecret);
-      const paymentUrl = `${vnp_Url}?${sortedParams}&vnp_SecureHash=${vnp_SecureHash}`;
-
-      // Chuyển hướng
-      window.location.href = paymentUrl;
-
-    } catch (error) {
-      console.error("Lỗi tạo URL thanh toán:", error);
-      toast.error("Không thể chuyển đến cổng thanh toán");
+      if (res.data.success && res.data.paymentUrl) {
+        // Redirect to VNPAY
+        window.location.href = res.data.paymentUrl;
+      } else {
+        toast.error(res.data.message || "Không thể tạo đơn thanh toán");
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Lỗi tạo đơn thanh toán");
     } finally {
       setIsSubmitting(false);
     }
@@ -278,7 +236,7 @@ export default function DonationForm({ open, onOpenChange, assistanceId }: Donat
           </DialogDescription>
         </DialogHeader>
 
-        {/* Card thông tin bệnh nhân - đẹp hơn */}
+        {/* Assistance info card */}
         <div className="bg-white rounded-2xl shadow-lg border border-blue-100 p-6 -mt-3">
           <h3 className="text-xl font-bold text-primary">{assistance.title}</h3>
           <div className="flex flex-wrap gap-3 text-sm text-muted-foreground mt-2">
@@ -307,7 +265,7 @@ export default function DonationForm({ open, onOpenChange, assistanceId }: Donat
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-7 mt-6">
 
-          {/* Số tiền - đẹp hơn */}
+          {/* Amount section */}
           <div className="space-y-5">
             <div className="flex items-center gap-3">
               <CreditCard className="h-6 w-6 text-primary" />
@@ -355,7 +313,7 @@ export default function DonationForm({ open, onOpenChange, assistanceId }: Donat
             )}
           </div>
 
-          {/* Thông tin người ủng hộ */}
+          {/* Donor info */}
           <div className="space-y-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -395,7 +353,7 @@ export default function DonationForm({ open, onOpenChange, assistanceId }: Donat
             )}
           </div>
 
-          {/* Lời nhắn */}
+          {/* Message */}
           <div className="space-y-3">
             <Label>Lời nhắn (tùy chọn)</Label>
             <Textarea
@@ -406,52 +364,38 @@ export default function DonationForm({ open, onOpenChange, assistanceId }: Donat
             />
           </div>
 
-          {/* Phương thức thanh toán - giữ nguyên logic cũ */}
+          {/* Payment method - hardcoded VNPAY */}
           <div className="space-y-3">
-            <Label>Phương thức thanh toán *</Label>
-            <Select onValueChange={(value) => setValue("paymentMethod", value)}>
-              <SelectTrigger className="h-12">
-                <SelectValue placeholder="Chọn phương thức thanh toán" />
-              </SelectTrigger>
-              <SelectContent>
-                {paymentMethods.map((method) => (
-                  <SelectItem key={method.value} value={method.value}>
-                    <div className="flex items-center gap-3">
-                      <img src={VNpay} alt="VNPay" className="h-6 w-6" />
-                      <span className="font-medium">{method.label}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.paymentMethod && (
-              <p className="text-sm text-destructive">{errors.paymentMethod.message}</p>
-            )}
+            <Label>Phương thức thanh toán</Label>
+            <div className="p-3 bg-blue-50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <img src={VNpay} alt="VNPay" className="h-6 w-6" />
+                <span className="font-medium text-blue-900">VNPay (An toàn & Nhanh chóng)</span>
+              </div>
+            </div>
           </div>
 
-          {/* Nút thanh toán nổi bật */}
-          {watch("paymentMethod") === "vnpay" && (
-            <Button
-              type="submit"
-              size="lg"
-              className="w-full h-16 text-lg font-bold bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-xl"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-3 h-6 w-6 animate-spin" />
-                  Đang chuyển đến cổng thanh toán...
-                </>
-              ) : (
-                <>
-                  <img src={VNpay} alt="VNPay" className="h-8 mr-3" />
-                  Thanh toán an toàn ngay
-                </>
-              )}
-            </Button>
-          )}
+          {/* Submit button */}
+          <Button
+            type="submit"
+            size="lg"
+            className="w-full h-16 text-lg font-bold bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-xl"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-3 h-6 w-6 animate-spin" />
+                Đang tạo đơn thanh toán...
+              </>
+            ) : (
+              <>
+                <img src={VNpay} alt="VNPay" className="h-8 mr-3" />
+                Thanh toán an toàn ngay
+              </>
+            )}
+          </Button>
 
-          {/* Cam kết minh bạch */}
+          {/* Transparency commitment */}
           <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-2xl p-6 text-center">
             <Shield className="h-12 w-12 text-blue-600 mx-auto mb-3" />
             <p className="text-lg font-bold text-blue-900">Cam kết minh bạch tuyệt đối</p>

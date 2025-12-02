@@ -110,7 +110,9 @@ export default function CharityAdminDashboard() {
     : [
       {
         title: 'Tổng quyên góp',
-        value: `${dashboardData?.totalDonations.toLocaleString() || 0} VNĐ`,
+        value: dashboardData?.totalDonations
+          ? `${dashboardData.totalDonations.toLocaleString('vi-VN')} VNĐ`
+          : '0 VNĐ',
         change: `+${dashboardData?.donationGrowth || 0}%`,
         icon: Gift,
         color: 'text-success',
@@ -159,7 +161,7 @@ export default function CharityAdminDashboard() {
         donor: don.isAnonymous
           ? 'Ẩn danh'
           : don.userId?.fullName || don.userId?.email || 'Không xác định',
-        amount: `${(don.amount || 0).toLocaleString()} VNĐ`,
+        amount: `${don.amount.toLocaleString('vi-VN')} VNĐ`,
         type: 'money',
         time: formatTimeAgo(don.createdAt),
       }))

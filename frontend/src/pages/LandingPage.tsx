@@ -25,8 +25,8 @@ import ChatBubble from './ChatbotPage';
 import { useState, useEffect } from 'react';
 import DonationForm from '@/components/form/DonationForm';
 import TestimonialForm from '@/components/form/TestimonialForm';
-import { partnersAPI, testimonialsAPI, assistanceAPI, doctorsAPI, clinicsAPI, eventsAPI, packagesAPI } from '@/lib/api'; // Thêm packagesAPI
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { partnersAPI, testimonialsAPI, assistanceAPI, doctorsAPI, eventsAPI, packagesAPI } from '@/lib/api'; // Thêm packagesAPI
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import toast from 'react-hot-toast';
 import { HeartAnimation } from '@/components/layout/HeartAnimation';
 import PackageDetailModal from './PackageDetailModal';
@@ -139,7 +139,7 @@ export default function LandingPage() {
   const [busModalOpen, setBusModalOpen] = useState(false);
   const [selectedFoodPoint, setSelectedFoodPoint] = useState<Partner | null>(null);
   const [foodModalOpen, setFoodModalOpen] = useState(false);
-
+  const [selectedPkg, setSelectedPkg] = useState<any>(null);
   // Lấy danh sách đánh giá từ API
   const fetchTestimonials = async () => {
     try {
@@ -590,7 +590,7 @@ export default function LandingPage() {
             </motion.div>
 
             {/* RIGHT IMAGE / DECOR */}
-            <motion.div
+            {/* <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, delay: 0.2 }}
@@ -603,7 +603,7 @@ export default function LandingPage() {
                   alt="MedicalHope volunteer"
                 />
               </div>
-            </motion.div>
+            </motion.div> */}
 
           </div>
 
@@ -700,7 +700,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto mb-12">
             {packages.map((pkg, i) => (
               <motion.div
-                key={pkg.title}
+                key={pkg._id}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -708,17 +708,19 @@ export default function LandingPage() {
                 className="group"
               >
                 <Card
-                  className="healthcare-card h-full group-hover:shadow-2xl group-hover:border-primary transition-all duration-300 border-2"
-                  onClick={() => setDetailOpen(true)}
+                  className="healthcare-card h-full group-hover:shadow-2xl group-hover:border-primary transition-all duration-300 border-2 cursor-pointer"
+                  onClick={() => {
+                    setSelectedPkg(pkg);
+                    setDetailOpen(true);
+                  }}
                 >
+                  {/* ảnh + nội dung giữ nguyên */}
                   <div className="h-48 w-full overflow-hidden rounded-t-lg">
                     <img
                       src={pkg.image ? `${API_SERVER}${pkg.image}` : unthuImg}
                       alt={pkg.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 "
-                      onError={(e) => {
-                        e.currentTarget.src = unthuImg;
-                      }}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      onError={(e) => { e.currentTarget.src = unthuImg; }}
                     />
                   </div>
                   <CardContent className="p-6 space-y-4">
@@ -732,55 +734,63 @@ export default function LandingPage() {
                     <p className="text-xs italic text-orange-600">
                       <strong>Điều kiện:</strong> {pkg.conditions}
                     </p>
+
+                    {/* Nút Đăng ký ngay */}
                     <div
                       onClick={(e) => {
-                        e.stopPropagation();
-                        setFormOpen(true);
+                        e.stopPropagation();           // ← ngăn mở modal chi tiết
+                        setSelectedPkg(pkg);            // ← lưu gói đang chọn
+                        setFormOpen(true);              // ← mở form đơn giản
                       }}
                       className="mt-4"
                     >
-                      <Button
-                        className="w-full bg-gradient-to-r from-blue-600 to-green-600 text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all"
-                        size="lg"
-                      >
+                      <Button className="w-full bg-gradient-to-r from-blue-600 to-green-600 text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all" size="lg">
                         Đăng ký ngay
                         <ArrowRight className="ml-2 h-5 w-5" />
                       </Button>
                     </div>
                   </CardContent>
                 </Card>
-
-                <PackageDetailModal
-                  pkg={pkg}
-                  open={detailOpen}
-                  onOpenChange={setDetailOpen}
-                  onRegister={() => {
-                    setDetailOpen(false);
-                    setFormOpen(true);
-                  }}
-                />
-
-                <PackageRegisterForm
-                  pkg={pkg}
-                  open={formOpen}
-                  onOpenChange={setFormOpen}
-                />
               </motion.div>
             ))}
           </div>
+
           {/* Nút xem tất cả */}
           <div className="text-center">
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={() => navigate('/services')}
-              className="border-2 border-blue-600 text-blue-600 hover:bg-blue-50 rounded-full px-8"
-            >
+            <Button variant="outline" size="lg" onClick={() => navigate('/services')} className="border-2 border-blue-600 text-blue-600 hover:bg-blue-50 rounded-full px-8">
               Xem tất cả gói hỗ trợ
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </div>
         </div>
+
+        {/* CHỈ 1 FORM DUY NHẤT - ĐẶT Ở CUỐI */}
+        {selectedPkg && (
+          <>
+            {/* Modal chi tiết (nếu vẫn muốn giữ) */}
+            <PackageDetailModal
+              pkg={selectedPkg}
+              open={detailOpen}
+              onOpenChange={setDetailOpen}
+              onRegister={() => {
+                setDetailOpen(false);
+                setFormOpen(true);
+              }}
+            />
+
+            {/* Form đăng ký đơn giản - CHỈ MỞ KHI CÓ GÓI ĐƯỢC CHỌN */}
+            <PackageRegisterForm
+              pkg={selectedPkg}
+              open={formOpen}
+              onOpenChange={(isOpen) => {
+                setFormOpen(isOpen);
+                if (!isOpen) {
+                  setSelectedPkg(null);  // ← reset để lần sau bấm gói khác không bị cũ
+                }
+              }}
+            />
+          </>
+        )}
       </section>
 
       {/* Support Requests Section */}
@@ -863,6 +873,7 @@ export default function LandingPage() {
                                 <div className="flex justify-between text-sm mb-2">
                                   <span>Số tiền cần:</span>
                                   <span className="font-semibold">{formatVND(request.requestedAmount)}</span>
+
                                 </div>
                                 <div className="w-full bg-gray-200 rounded-full h-2.5">
                                   <div
@@ -914,6 +925,178 @@ export default function LandingPage() {
         </div>
       </section>
       
+      {/* Testimonials Section */}
+      <section className="py-20 bg-background relative">
+        <div className="container mx-auto px-4">
+          <HeartAnimation />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="max-w-3xl mx-auto text-center mb-16"
+          >
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/10 px-6 py-2">
+              <Users className="h-5 w-5 text-primary" />
+              <span className="text-sm font-medium text-primary">Chia sẻ từ trái tim</span>
+            </div>
+            <h2 className=" text-4xl font-bold mb-4">
+              Câu Chuyện Của Những Người Thụ Hưởng
+            </h2>
+            <p className="text-xl text-muted-foreground">
+              Nghe những lời chia sẻ chân thành từ những người đã được MedicalHope+ đồng hành.
+            </p>
+          </motion.div>
+          {testimonialLoading ? (
+            <div className="text-center text-muted-foreground">Đang tải đánh giá...</div>
+          ) : testimonialError ? (
+            <div className="text-center text-red-500">{testimonialError}</div>
+          ) : testimonials.length === 0 ? (
+            <div className="text-center text-muted-foreground">Chưa có đánh giá nào.</div>
+          ) : (
+            <div className="max-w-7xl mx-auto px-2">
+              <div className="relative max-w-6xl mx-auto">
+                {currentIndex > 0 && (
+                  <button
+                    onClick={() => setCurrentIndex((prev) => Math.max(prev - 3, 0))}
+                    className="absolute -left-12 top-1/2 transform -translate-y-1/2 bg-primary/10 hover:bg-primary/20 text-primary p-2 rounded-full shadow-md transition"
+                  >
+                    <ChevronLeft className="h-6 w-6" />
+                  </button>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {testimonials
+                    .filter((t) => t.visible !== false)
+                    .slice(currentIndex, currentIndex + 3)
+                    .map((testimonial, index) => (
+                      <motion.div
+                        key={`${testimonial._id || index}`}
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: index * 0.1 }}
+                        className="group"
+                      >
+                        <div
+                          className="cursor-pointer"
+                          onClick={() => setSelectedTestimonial(testimonial)}
+                        >
+                          <Card className="healthcare-card h-full group-hover:shadow-2xl group-hover:border-primary transition-all duration-300 border-2">
+                            <CardContent className="pt-6">
+                              <div className="mb-4">
+                                <p
+                                  className="text-muted-foreground italic mb-4 line-clamp-3 group-hover:text-foreground transition-colors"
+                                  title={testimonial.content}
+                                >
+                                  "{testimonial.content}"
+                                </p>
+                              </div>
+                              <div className="border-t pt-4 flex items-center justify-between">
+                                <div>
+                                  <p className="font-semibold text-primary">
+                                    Ẩn danh
+                                  </p>
+                                  <p className="text-sm text-primary">{testimonial.treatment}</p>
+                                </div>
+                                <div
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="flex items-center"
+                                >
+                                  <button
+                                    onClick={() => handleLike(testimonial._id)}
+                                    disabled={likedTestimonials.includes(testimonial._id)}
+                                    className={`flex items-center gap-1 text-sm transition ${likedTestimonials.includes(testimonial._id)
+                                      ? "text-red-500"
+                                      : "text-muted-foreground hover:text-red-400"
+                                      }`}
+                                  >
+                                    <Heart
+                                      className={`h-5 w-5 transition-transform duration-200 ${likedTestimonials.includes(testimonial._id)
+                                        ? "fill-red-500 scale-110"
+                                        : "fill-none hover:scale-110"
+                                        }`}
+                                    />
+                                    <span>{formatLikeCount(testimonial.likes)}</span>
+                                  </button>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </div>
+                      </motion.div>
+                    ))}
+                </div>
+                {currentIndex + 3 < testimonials.length && (
+                  <button
+                    onClick={() =>
+                      setCurrentIndex((prev) =>
+                        Math.min(prev + 3, testimonials.length - 3)
+                      )
+                    }
+                    className="absolute -right-12 top-1/2 transform -translate-y-1/2 bg-primary/10 hover:bg-primary/20 text-primary p-2 rounded-full shadow-md transition"
+                  >
+                    <ChevronRight className="h-6 w-6" />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mt-12 text-center"
+          >
+            <Button
+              size="lg"
+              className="btn-healthcare"
+              onClick={() => setOpenTestimonialForm(true)}
+            >
+              <Send className="h-4 w-4 mr-2" />
+              Gửi lời yêu thương
+            </Button>
+          </motion.div>
+          <Dialog open={openTestimonialForm} onOpenChange={setOpenTestimonialForm}>
+            <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle>Chia sẻ câu chuyện của bạn</DialogTitle>
+                <DialogDescription>
+                  Hãy chia sẻ trải nghiệm của bạn với MedicalHope+. Thông tin của bạn sẽ giúp lan tỏa tinh thần nhân ái.
+                </DialogDescription>
+              </DialogHeader>
+              <TestimonialForm
+                formData={testimonialFormData}
+                error={testimonialError}
+                onInputChange={handleTestimonialInputChange}
+                onSubmit={handleTestimonialFormSubmit}
+                onReset={handleTestimonialFormReset}
+              />
+            </DialogContent>
+          </Dialog>
+          <Dialog
+            open={!!selectedTestimonial}
+            onOpenChange={() => setSelectedTestimonial(null)}
+          >
+            <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle>
+                  {selectedTestimonial?.name}, {selectedTestimonial?.age} tuổi
+                </DialogTitle>
+                <DialogDescription>
+                  {selectedTestimonial?.location} | {selectedTestimonial?.treatment}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="mt-4 space-y-2">
+                <p className="text-muted-foreground">{selectedTestimonial?.content}</p>
+                <div className="flex items-center gap-1 text-red-500 font-medium mt-2">
+                  <Heart className="h-5 w-5 fill-red-500" />
+                  <span>{formatLikeCount(selectedTestimonial?.likes)}</span>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </section>
+
       {/* ==================== NHÀ XE 0 ĐỒNG – CÓ MODAL CHI TIẾT ==================== */}
       <section className="py-20 bg-gradient-to-b from-orange-50 to-background">
         <div className="container mx-auto px-4">
@@ -1191,177 +1374,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-      {/* Testimonials Section */}
-      <section className="py-20 bg-background relative">
-        <div className="container mx-auto px-4">
-          <HeartAnimation />
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="max-w-3xl mx-auto text-center mb-16"
-          >
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/10 px-6 py-2">
-              <Users className="h-5 w-5 text-primary" />
-              <span className="text-sm font-medium text-primary">Chia sẻ từ trái tim</span>
-            </div>
-            <h2 className=" text-4xl font-bold mb-4">
-              Câu chuyện của những người thụ hưởng
-            </h2>
-            <p className="text-xl text-muted-foreground">
-              Nghe những lời chia sẻ chân thành từ những người đã được MedicalHope+ đồng hành.
-            </p>
-          </motion.div>
-          {testimonialLoading ? (
-            <div className="text-center text-muted-foreground">Đang tải đánh giá...</div>
-          ) : testimonialError ? (
-            <div className="text-center text-red-500">{testimonialError}</div>
-          ) : testimonials.length === 0 ? (
-            <div className="text-center text-muted-foreground">Chưa có đánh giá nào.</div>
-          ) : (
-            <div className="max-w-7xl mx-auto px-2">
-              <div className="relative max-w-6xl mx-auto">
-                {currentIndex > 0 && (
-                  <button
-                    onClick={() => setCurrentIndex((prev) => Math.max(prev - 3, 0))}
-                    className="absolute -left-12 top-1/2 transform -translate-y-1/2 bg-primary/10 hover:bg-primary/20 text-primary p-2 rounded-full shadow-md transition"
-                  >
-                    <ChevronLeft className="h-6 w-6" />
-                  </button>
-                )}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {testimonials
-                    .filter((t) => t.visible !== false)
-                    .slice(currentIndex, currentIndex + 3)
-                    .map((testimonial, index) => (
-                      <motion.div
-                        key={`${testimonial._id || index}`}
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ delay: index * 0.1 }}
-                        className="group"
-                      >
-                        <div
-                          className="cursor-pointer"
-                          onClick={() => setSelectedTestimonial(testimonial)}
-                        >
-                          <Card className="healthcare-card h-full group-hover:shadow-2xl group-hover:border-primary transition-all duration-300 border-2">
-                            <CardContent className="pt-6">
-                              <div className="mb-4">
-                                <p
-                                  className="text-muted-foreground italic mb-4 line-clamp-3 group-hover:text-foreground transition-colors"
-                                  title={testimonial.content}
-                                >
-                                  "{testimonial.content}"
-                                </p>
-                              </div>
-                              <div className="border-t pt-4 flex items-center justify-between">
-                                <div>
-                                  <p className="font-semibold text-primary">
-                                    Ẩn danh
-                                  </p>
-                                  <p className="text-sm text-primary">{testimonial.treatment}</p>
-                                </div>
-                                <div
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="flex items-center"
-                                >
-                                  <button
-                                    onClick={() => handleLike(testimonial._id)}
-                                    disabled={likedTestimonials.includes(testimonial._id)}
-                                    className={`flex items-center gap-1 text-sm transition ${likedTestimonials.includes(testimonial._id)
-                                      ? "text-red-500"
-                                      : "text-muted-foreground hover:text-red-400"
-                                      }`}
-                                  >
-                                    <Heart
-                                      className={`h-5 w-5 transition-transform duration-200 ${likedTestimonials.includes(testimonial._id)
-                                        ? "fill-red-500 scale-110"
-                                        : "fill-none hover:scale-110"
-                                        }`}
-                                    />
-                                    <span>{formatLikeCount(testimonial.likes)}</span>
-                                  </button>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </div>
-                      </motion.div>
-                    ))}
-                </div>
-                {currentIndex + 3 < testimonials.length && (
-                  <button
-                    onClick={() =>
-                      setCurrentIndex((prev) =>
-                        Math.min(prev + 3, testimonials.length - 3)
-                      )
-                    }
-                    className="absolute -right-12 top-1/2 transform -translate-y-1/2 bg-primary/10 hover:bg-primary/20 text-primary p-2 rounded-full shadow-md transition"
-                  >
-                    <ChevronRight className="h-6 w-6" />
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mt-12 text-center"
-          >
-            <Button
-              size="lg"
-              className="btn-healthcare"
-              onClick={() => setOpenTestimonialForm(true)}
-            >
-              <Send className="h-4 w-4 mr-2" />
-              Gửi lời yêu thương
-            </Button>
-          </motion.div>
-          <Dialog open={openTestimonialForm} onOpenChange={setOpenTestimonialForm}>
-            <DialogContent className="sm:max-w-[600px]">
-              <DialogHeader>
-                <DialogTitle>Chia sẻ câu chuyện của bạn</DialogTitle>
-                <DialogDescription>
-                  Hãy chia sẻ trải nghiệm của bạn với MedicalHope+. Thông tin của bạn sẽ giúp lan tỏa tinh thần nhân ái.
-                </DialogDescription>
-              </DialogHeader>
-              <TestimonialForm
-                formData={testimonialFormData}
-                error={testimonialError}
-                onInputChange={handleTestimonialInputChange}
-                onSubmit={handleTestimonialFormSubmit}
-                onReset={handleTestimonialFormReset}
-              />
-            </DialogContent>
-          </Dialog>
-          <Dialog
-            open={!!selectedTestimonial}
-            onOpenChange={() => setSelectedTestimonial(null)}
-          >
-            <DialogContent className="sm:max-w-[600px]">
-              <DialogHeader>
-                <DialogTitle>
-                  {selectedTestimonial?.name}, {selectedTestimonial?.age} tuổi
-                </DialogTitle>
-                <DialogDescription>
-                  {selectedTestimonial?.location} | {selectedTestimonial?.treatment}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="mt-4 space-y-2">
-                <p className="text-muted-foreground">{selectedTestimonial?.content}</p>
-                <div className="flex items-center gap-1 text-red-500 font-medium mt-2">
-                  <Heart className="h-5 w-5 fill-red-500" />
-                  <span>{formatLikeCount(selectedTestimonial?.likes)}</span>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </section>
+
       <Footer />
       <ChatBubble />
       <ScrollToTop />

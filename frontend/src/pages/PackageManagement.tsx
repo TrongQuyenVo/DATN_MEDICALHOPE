@@ -551,7 +551,7 @@ export default function PackageManagement() {
             </div>
             {selectedReg?.identityCard && selectedReg.identityCard.length > 0 && (
               <div>
-                <strong>CMND/CCCD:</strong>
+                <strong>Hình ảnh:</strong>
                 <div className="grid grid-cols-2 gap-4 mt-3">
                   {selectedReg.identityCard.map((url, i) => (
                     <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block">

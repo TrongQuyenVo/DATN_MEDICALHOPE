@@ -134,7 +134,13 @@ export const donationsAPI = {
   create: (data: any) => api.post('/donations', data),
   getAll: (params?: any) => api.get('/donations', { params }),
 
-  createConfirmed: (data: any) => api.post('/donations/confirmed', data),
+ getByTxnRef: (txnRef: string) =>
+    api.get<{ success: true; data: any }>(`/donations/txn/${txnRef}`),
+
+  // 4. (Tùy chọn) Gọi khi người dùng vào trang cảm ơn - xác nhận lại giao dịch
+  confirmSuccess: (txnRef: string) =>
+    api.get<{ success: true; data: any }>(`/donations/confirm-success/${txnRef}`),
+
 };
 
 // ==========================

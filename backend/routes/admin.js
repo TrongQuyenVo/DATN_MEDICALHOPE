@@ -9,7 +9,27 @@ const PatientAssistance = require("../models/PatientAssistance");
 const Patient = require("../models/Patient");
 const { auth, authorize } = require("../middleware/auth");
 
-// Chỉ admin và charity_admin
+// Helper: Định dạng thời gian tiếng Việt
+const formatRelativeTime = (date) => {
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "Vừa xong";
+  if (diffMins < 60) return `${diffMins} phút trước`;
+  if (diffHours < 24) return `${diffHours} giờ trước`;
+  if (diffDays < 7) return `${diffDays} ngày trước`;
+  return date.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
 router.get(
   "/dashboard",
   auth,
@@ -18,17 +38,18 @@ router.get(
     try {
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const startOfDay = new Date(now.setHours(0, 0, 0, 0));
+      const startOfDay = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate()
+      );
 
-      // 1. Tổng người dùng
+      // === 1. Các số liệu chính ===
       const totalUsers = await User.countDocuments({ isActive: true });
-
-      // 2. Bác sĩ tình nguyện
       const volunteerDoctors = await Doctor.countDocuments({
         isVolunteer: true,
       });
 
-      // 3. Quyên góp tháng này
       const monthlyDonations = await Donation.aggregate([
         {
           $match: {
@@ -38,38 +59,22 @@ router.get(
         },
         { $group: { _id: null, total: { $sum: "$amount" } } },
       ]);
-      const donationThisMonth = (monthlyDonations[0]?.total || 0) / 1_000_000; // triệu
+      const donationThisMonth = monthlyDonations[0]?.total || 0; // Số tiền thật
 
-      // 4. Tổ chức từ thiện
       const totalCharities = await CharityOrg.countDocuments({
         isActive: true,
       });
 
-      // 5. Người dùng mới hôm nay
       const newUsersToday = await User.countDocuments({
         createdAt: { $gte: startOfDay },
         isActive: true,
       });
 
-      // 6. Quyên góp lớn gần đây
-      const recentLargeDonation = await Donation.findOne({
-        status: "completed",
-        createdAt: { $gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) },
-      })
-        .sort({ amount: -1 })
-        .populate("userId", "fullName")
-        .select("amount userId createdAt");
-
-      // 7. Yêu cầu hỗ trợ khẩn cấp
-      const urgentRequests = await PatientAssistance.countDocuments({
-        urgency: "critical",
-        status: "pending",
+      const newPatientsThisMonth = await Patient.countDocuments({
+        createdAt: { $gte: startOfMonth },
       });
 
-      // 8. Backup hệ thống (giả lập)
-      const lastBackup = new Date().toLocaleString("vi-VN");
-
-      // 9. Yêu cầu chờ duyệt
+      // === 2. Yêu cầu đang chờ xử lý ===
       const pendingDoctorVerifications = await Doctor.countDocuments({
         license: { $exists: true },
         isVerified: { $ne: true },
@@ -80,29 +85,99 @@ router.get(
       const pendingPatientVerifications = await Patient.countDocuments({
         isVerified: false,
       });
-
-      // 10. Mục tiêu tháng
-      const targetDonations = 200_000_000; // 200M
-      const targetNewPatients = 500;
-      const targetVolunteers = 200;
-
-      const newPatientsThisMonth = await Patient.countDocuments({
-        createdAt: { $gte: startOfMonth },
+      const urgentRequests = await PatientAssistance.countDocuments({
+        urgency: "critical",
+        status: "pending",
       });
 
+      // === 3. HOẠT ĐỘNG GẦN ĐÂY ===
+      const recentDonations = await Donation.find({
+        status: "completed",
+        createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+      })
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .populate("userId", "fullName")
+        .populate("patientId", "fullName")
+        .select("amount userId patientId createdAt isAnonymous");
+
+      const activities = [];
+
+      recentDonations.forEach((donation) => {
+        const donorName = donation.isAnonymous
+          ? "Một nhà hảo tâm"
+          : donation.userId?.fullName || "Ẩn danh";
+
+        const patientPart = donation.patientId
+          ? ` cho bệnh nhân ${donation.patientId.fullName}`
+          : " vào quỹ chung";
+
+        activities.push({
+          id: `donation_${donation._id}`,
+          type: "donation",
+          // ĐÃ SỬA: Không chia triệu, không làm tròn
+          message: `${donorName} đã quyên góp ${donation.amount.toLocaleString(
+            "vi-VN"
+          )} VNĐ${patientPart}`,
+          time: formatRelativeTime(donation.createdAt),
+          timestamp: donation.createdAt,
+          status: "success",
+        });
+      });
+
+      if (newUsersToday > 0) {
+        activities.push({
+          id: "new_users_today",
+          type: "user",
+          message: `${newUsersToday} người dùng mới đăng ký hôm nay`,
+          time: "Vừa xong",
+          timestamp: now,
+          status: "info",
+        });
+      }
+
+      if (urgentRequests > 0) {
+        activities.push({
+          id: "urgent_requests",
+          type: "alert",
+          message: `${urgentRequests} yêu cầu hỗ trợ khẩn cấp cần xử lý ngay`,
+          time: "Cấp bách",
+          timestamp: now,
+          status: "warning",
+        });
+      }
+
+      activities.sort((a, b) => b.timestamp - a.timestamp);
+      const recentActivities = activities
+        .slice(0, 10)
+        .map(({ timestamp, ...act }) => act);
+
+      // === RESPONSE CHUẨN 100% ===
       res.json({
+        keyMetrics: {
+          totalUsers,
+          totalDonations: donationThisMonth, // Số tiền thật
+          appointmentsThisMonth: 0,
+          completionRate: 0,
+        },
+        userDistribution: [{ role: "Bác sĩ", count: volunteerDoctors }],
+        previousMetrics: {
+          totalUsers: 0,
+          doctors: 0,
+          donations: 0,
+          partners: 0,
+        },
         stats: [
           {
             title: "Tổng người dùng",
             value: totalUsers.toLocaleString("vi-VN"),
-            change: "+12.5%", // có thể tính động
+            change: "+12.5%",
             changeType: "increase",
             icon: "Users",
-            color: "text-primary",
           },
           {
             title: "Bác sĩ tình nguyện",
-            value: volunteerDoctors,
+            value: volunteerDoctors.toLocaleString("vi-VN"),
             change: "+8.2%",
             changeType: "increase",
             icon: "Stethoscope",
@@ -110,55 +185,21 @@ router.get(
           },
           {
             title: "Quyên góp tháng này",
-            value: `${donationThisMonth.toFixed(0)}M VNĐ`,
+            // ĐÃ SỬA: Hiển thị đầy đủ, không chia triệu
+            value: `${donationThisMonth.toLocaleString("vi-VN")} VNĐ`,
             change: "+15.3%",
             changeType: "increase",
             icon: "Gift",
-            color: "text-success",
           },
           {
             title: "Tổ chức từ thiện",
-            value: totalCharities,
-            change: "+2",
+            value: totalCharities.toLocaleString("vi-VN"),
+            change: "+3",
             changeType: "increase",
             icon: "Building2",
-            color: "text-warning",
           },
         ],
-        recentActivities: [
-          {
-            id: 1,
-            type: "user",
-            message: `${newUsersToday} người dùng mới đăng ký hôm nay`,
-            time: "2 giờ trước",
-            status: "info",
-          },
-          recentLargeDonation && {
-            id: 2,
-            type: "donation",
-            message: `Nhận được quyên góp ${(
-              recentLargeDonation.amount / 1_000_000
-            ).toFixed(0)}M VNĐ từ ${
-              recentLargeDonation.userId?.fullName || "ẩn danh"
-            }`,
-            time: "4 giờ trước",
-            status: "success",
-          },
-          {
-            id: 3,
-            type: "alert",
-            message: `${urgentRequests} yêu cầu hỗ trợ khẩn cấp cần duyệt`,
-            time: "6 giờ trước",
-            status: "warning",
-          },
-          {
-            id: 4,
-            type: "system",
-            message: `Hoàn thành backup dữ liệu hệ thống lúc ${lastBackup}`,
-            time: "1 ngày trước",
-            status: "success",
-          },
-        ].filter(Boolean),
+        recentActivities,
         pendingRequests: [
           {
             type: "Xác thực bác sĩ",
@@ -176,30 +217,31 @@ router.get(
             route: "/patients",
           },
         ],
+        // ĐÃ SỬA HOÀN TOÀN: Target đúng 200 triệu
         monthlyTargets: [
           {
             title: "Quyên góp",
             current: donationThisMonth,
-            target: 200,
-            unit: "M VNĐ",
+            target: 200_000_000, // ← ĐÚNG: 200 triệu
+            unit: "VNĐ",
           },
           {
             title: "Bệnh nhân mới",
             current: newPatientsThisMonth,
-            target: targetNewPatients,
+            target: 500,
             unit: "người",
           },
           {
             title: "Bác sĩ tình nguyện",
             current: volunteerDoctors,
-            target: targetVolunteers,
+            target: 200,
             unit: "người",
           },
         ],
       });
     } catch (error) {
       console.error("Admin Dashboard Error:", error);
-      res.status(500).json({ message: "Server error" });
+      res.status(500).json({ message: "Lỗi máy chủ" });
     }
   }
 );

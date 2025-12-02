@@ -1,9 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown, Users, DollarSign, CalendarDays, Target, Award } from 'lucide-react';
+import { TrendingUp, TrendingDown, Users, DollarSign, CalendarDays, Target, Award, Gift } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import ChatBubble from './ChatbotPage';
 import ScrollToTop from '@/components/layout/ScrollToTop';
@@ -156,11 +154,7 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-success">
-              {data.keyMetrics.totalDonations >= 1e9
-                ? `${(data.keyMetrics.totalDonations / 1e9).toFixed(2)}B VNĐ`
-                : data.keyMetrics.totalDonations >= 1e6
-                  ? `${(data.keyMetrics.totalDonations / 1e6).toFixed(1)}M VNĐ`
-                  : `${data.keyMetrics.totalDonations.toLocaleString('vi-VN')} VNĐ`}
+              {data.keyMetrics.totalDonations.toLocaleString('vi-VN')} VNĐ
             </div>
             {/* 2. Tổng quyên góp */}
             <div className="flex items-center text-xs mt-1">
@@ -283,19 +277,86 @@ export default function AnalyticsPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="healthcare-card">
           <CardHeader>
-            <CardTitle className="healthcare-heading">Quyên góp theo tháng</CardTitle>
-            <CardDescription>Thống kê số tiền quyên góp (VNĐ)</CardDescription>
+            <CardTitle className="healthcare-heading flex items-center gap-2">
+              <Gift className="h-5 w-5 text-success" />
+              Quyên góp theo tháng
+            </CardTitle>
+            <CardDescription>
+              Tổng số tiền quyên góp từng tháng (đơn vị: VNĐ)
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={data.monthlyGrowth}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip formatter={(value) => [`${Number(value).toLocaleString('vi-VN')} VNĐ`, 'Quyên góp']} />
-                <Line type="monotone" dataKey="donations" stroke="hsl(var(--success))" strokeWidth={2} />
+            <ResponsiveContainer width="100%" height={320}>
+              <LineChart
+                data={data.monthlyGrowth}
+                margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
+              >
+                <CartesianGrid strokeDasharray="4 4" stroke="hsl(var(--border))" />
+
+                <XAxis
+                  dataKey="month"
+                  tick={{ fontSize: 13 }}
+                  stroke="hsl(var(--muted-foreground))"
+                />
+
+                <YAxis
+                  tick={{ fontSize: 12 }}
+                  stroke="hsl(var(--muted-foreground))"
+                  tickFormatter={(value) => {
+                    if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}T`;
+                    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(0)}M`;
+                    if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K`;
+                    return value.toLocaleString('vi-VN');
+                  }}
+                />
+
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "hsl(var(--background))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "8px",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                  }}
+                  labelStyle={{ color: "hsl(var(--foreground))", fontWeight: "bold" }}
+                  formatter={(value: number) => [
+                    <span className="font-bold text-success">
+                      {value.toLocaleString('vi-VN')} VNĐ
+                    </span>,
+                    "Tổng quyên góp"
+                  ]}
+                  labelFormatter={(label) => `Tháng ${label}`}
+                />
+
+                <Line
+                  type="monotone"
+                  dataKey="donations"
+                  stroke="hsl(var(--success))"
+                  strokeWidth={3}
+                  dot={{
+                    fill: "hsl(var(--success))",
+                    strokeWidth: 2,
+                    r: 6,
+                  }}
+                  activeDot={{
+                    r: 8,
+                    stroke: "hsl(var(--success))",
+                    strokeWidth: 3,
+                    fill: "white",
+                  }}
+                  animationDuration={1200}
+                />
               </LineChart>
             </ResponsiveContainer>
+
+            {/* Tổng hợp nhanh bên dưới biểu đồ */}
+            <div className="mt-6 pt-4 border-t border-border flex justify-between items-center text-sm">
+              <div className="text-muted-foreground">
+                Tổng quyên góp năm nay
+              </div>
+              <div className="font-bold text-lg text-success">
+                {data.totalDonations.toLocaleString('vi-VN')} VNĐ
+              </div>
+            </div>
           </CardContent>
         </Card>
 

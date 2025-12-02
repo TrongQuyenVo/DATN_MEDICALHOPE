@@ -1,4 +1,4 @@
-// models/Donation.js
+// models/Donation.js (updated: simplified status, added txnRef)
 const mongoose = require("mongoose");
 
 const DonationSchema = new mongoose.Schema(
@@ -16,9 +16,10 @@ const DonationSchema = new mongoose.Schema(
     },
     amount: { type: Number, required: true, min: 0 },
     paymentMethod: { type: String, enum: ["vnpay"], required: true },
+    txnRef: { type: String, required: true, unique: true }, // VNPAY transaction ref
     isAnonymous: { type: Boolean, default: false },
 
-    // Thông tin người ủng hộ (dùng cho cả user và guest)
+    // Donor info
     donorName: { type: String },
     donorEmail: { type: String },
     donorPhone: { type: String },
@@ -26,8 +27,8 @@ const DonationSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["pending", "completed", "failed", "cancelled"],
-      default: "pending", // Thay đổi: mặc định là pending
+      enum: ["pending", "completed", "failed"], // Removed cancelled, simplified
+      default: "pending",
     },
     confirmedAt: { type: Date },
   },

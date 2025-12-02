@@ -360,14 +360,24 @@ router.get("/recent-activities", auth, authorize("admin"), async (req, res) => {
       .select("amount userId assistanceId createdAt _id");
 
     recentDonations.forEach((d) => {
-      const donorName = d.userId?.fullName || "Người dùng đã xóa";
-      const assistTitle = d.assistanceId?.title 
-        ? ` cho "${d.assistanceId.title}"` 
+      let donorName;
+
+      if (!d.userId) {
+        donorName = d.isAnonymous ? "Người ẩn danh" : "Người ẩn danh";
+      } else {
+        // Trường hợp có userId (người dùng đã đăng nhập)
+        donorName = d.userId?.fullName || "Người dùng đã xóa";
+      }
+
+      const assistTitle = d.assistanceId?.title
+        ? ` cho "${d.assistanceId.title}"`
         : "";
 
       activities.push({
         id: `donation-${d._id}`,
-        message: `${donorName} đã ủng hộ ${d.amount.toLocaleString('vi-VN')}₫${assistTitle}`,
+        message: `${donorName} đã ủng hộ ${d.amount.toLocaleString(
+          "vi-VN"
+        )} VNĐ${assistTitle}`,
         time: formatRelativeTime(d.createdAt),
         timestamp: d.createdAt,
         status: "success",

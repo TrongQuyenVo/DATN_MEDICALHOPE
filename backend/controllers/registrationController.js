@@ -10,12 +10,25 @@ const getFileUrls = (files) => {
 
 // Người dùng gửi đơn
 const createRegistration = asyncHandler(async (req, res) => {
-  const files = req.files;
+  const files = req.files; // multer đã gộp tất cả file lại
 
-  if (!files.identityCard || files.identityCard.length === 0) {
+  // === TỔNG HỢP TẤT CẢ ẢNH NGƯỜI DÙNG CHỤP (không phân biệt field) ===
+  let allUploadedFiles = [];
+
+  if (files) {
+    // files là object: { identityCard: [...], medicalRecords: [...], ... }
+    Object.values(files).forEach((fileArray) => {
+      if (Array.isArray(fileArray)) {
+        allUploadedFiles = allUploadedFiles.concat(fileArray);
+      }
+    });
+  }
+
+  // BẮT BUỘC phải có ít nhất 1 ảnh (dù chụp gì cũng được)
+  if (allUploadedFiles.length === 0) {
     return res
       .status(400)
-      .json({ message: "Vui lòng tải lên ít nhất 1 ảnh CMND/CCCD" });
+      .json({ message: "Vui lòng chụp ít nhất 1 ảnh giấy tờ" });
   }
 
   const {
@@ -30,26 +43,29 @@ const createRegistration = asyncHandler(async (req, res) => {
     commitment,
   } = req.body;
 
+  const imageUrls = getFileUrls(allUploadedFiles);
+
   const registration = await Registration.create({
     packageId,
     packageTitle,
-    fullName,
-    phone,
-    dob,
+    fullName: fullName || "Không ghi tên",
+    phone: phone || "Không có số điện thoại",
+    dob: dob || "Không rõ",
     gender: gender || null,
-    address,
-    healthIssue,
-    commitment: commitment === "true",
+    address: address || "Không ghi địa chỉ",
+    healthIssue: healthIssue || "Cần hỗ trợ khám bệnh",
 
-    identityCard: getFileUrls(files.identityCard),
-    povertyCertificate: getFileUrls(files.povertyCertificate),
-    medicalRecords: getFileUrls(files.medicalRecords),
-    dischargePaper: getFileUrls(files.dischargePaper),
+    identityCard: imageUrls,
+    medicalRecords: imageUrls,
+    povertyCertificate: imageUrls,
+    dischargePaper: imageUrls,
+
+    commitment: commitment === "true",
   });
 
   res.status(201).json({
     success: true,
-    message: "Đăng ký thành công!",
+    message: "Đăng ký thành công! Chúng tôi sẽ gọi lại sớm",
     data: registration,
   });
 });

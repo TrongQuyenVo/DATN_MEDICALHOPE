@@ -167,7 +167,7 @@ exports.getAssistanceById = async (req, res) => {
         },
       })
       .populate("approvedBy", "fullName");
-
+      console.log("Assistance details:", assistance);
     if (!assistance) {
       return res.status(404).json({
         success: false,
