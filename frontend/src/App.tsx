@@ -44,6 +44,8 @@ import AllSupportRequests from "./pages/AllSupportRequests";
 import EventManagement from "./pages/EventManagement";
 import PackageManagement from "./pages/PackageManagement";
 import EventDetailPage from "./pages/EventDetailPage";
+import DonationSuccess from "./pages/DonationSuccess";
+import DonationFailure from "./pages/DonationFailure";
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -96,6 +98,8 @@ const App = () => {
                 path="/xac-nhan-thanh-toan"
                 element={<PaymentConfirmPage />}
               />
+              <Route path="/donation-success" element={<DonationSuccess />} />
+              <Route path="/donation-failure" element={<DonationFailure />} />
               <Route path="/payment-success" element={<PaymentSuccess />} />
               <Route path="/payment-failed" element={<PaymentFailed />} />
               <Route path="/payment-invalid" element={<PaymentInvalid />} />

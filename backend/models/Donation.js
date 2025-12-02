@@ -15,7 +15,14 @@ const DonationSchema = new mongoose.Schema(
       required: true,
     },
     amount: { type: Number, required: true, min: 0 },
-    paymentMethod: { type: String, enum: ["vnpay"], required: true },
+    // Thêm vào schema
+    paymentMethod: {
+      type: String,
+      enum: ["vnpay", "paypal"],
+      required: true,
+    },
+    paypalOrderId: { type: String }, // Lưu order ID từ PayPal
+    paypalCaptureId: { type: String },
     txnRef: { type: String, required: true, unique: true }, // VNPAY transaction ref
     isAnonymous: { type: Boolean, default: false },
 
@@ -28,7 +35,7 @@ const DonationSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: ["pending", "completed", "failed"], // Removed cancelled, simplified
-      default: "pending",
+      default: "completed",
     },
     confirmedAt: { type: Date },
   },

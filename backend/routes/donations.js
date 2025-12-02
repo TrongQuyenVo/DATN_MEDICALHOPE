@@ -7,6 +7,13 @@ const router = express.Router();
 
 router.post("/", donationController.createDonation); // Optional auth for guests?
 
+
+router.get("/paypal-return", donationController.handlePaypalReturn);
+router.post(
+  "/paypal-webhook",
+  express.raw({ type: "application/json" }),
+  donationController.handlePaypalWebhook
+);
 // Return URL handler (no auth, public)
 router.get("/vnpay-return", donationController.handleVnpayReturn);
 

@@ -114,7 +114,6 @@ export default function LandingPage() {
   const [testimonialLoading, setTestimonialLoading] = useState(true);
   const [testimonialError, setTestimonialError] = useState<string | null>(null);
   const [selectedAssistanceId, setSelectedAssistanceId] = useState<string | null>(null);
-  // 1. State mới – chỉ còn 2 trường
   const [testimonialFormData, setTestimonialFormData] = useState({
     treatment: '',
     content: '',
@@ -123,7 +122,6 @@ export default function LandingPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [likedTestimonials, setLikedTestimonials] = useState<string[]>([]);
   const [selectedTestimonial, setSelectedTestimonial] = useState<Testimonial | null>(null);
-  // Thêm state cho assistance requests
   const [assistanceRequests, setAssistanceRequests] = useState<AssistanceRequest[]>([]);
   const [assistanceLoading, setAssistanceLoading] = useState(true);
   const [assistanceError, setAssistanceError] = useState<string | null>(null);
@@ -140,7 +138,6 @@ export default function LandingPage() {
   const [selectedFoodPoint, setSelectedFoodPoint] = useState<Partner | null>(null);
   const [foodModalOpen, setFoodModalOpen] = useState(false);
   const [selectedPkg, setSelectedPkg] = useState<any>(null);
-  // Lấy danh sách đánh giá từ API
   const fetchTestimonials = async () => {
     try {
       setTestimonialLoading(true);
@@ -153,7 +150,6 @@ export default function LandingPage() {
       setTestimonialLoading(false);
     }
   };
-  // Lấy danh sách yêu cầu hỗ trợ từ API
   const fetchAssistanceRequests = async () => {
     try {
       setAssistanceLoading(true);
@@ -523,7 +519,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-background">
       <Header />
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-hero pt-32 pb-20 text-white">
+      <section className="relative overflow-hidden bg-gradient-hero pt-24 pb-20 text-white">
         <div className="absolute inset-0 bg-black/40" />
         <div
           className="absolute inset-0 opacity-40"
@@ -924,7 +920,7 @@ export default function LandingPage() {
           </motion.div>
         </div>
       </section>
-      
+
       {/* Testimonials Section */}
       <section className="py-20 bg-background relative">
         <div className="container mx-auto px-4">

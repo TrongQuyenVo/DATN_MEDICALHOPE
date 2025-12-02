@@ -82,7 +82,7 @@ export default function DonationsPage() {
     donations.forEach((donation, index) => {
       const donorName = donation.isAnonymous
         ? 'Ẩn danh'
-        : donation.userId?.fullName || 'Người dùng';
+        : donation.userId?.fullName;
 
       const campaignName = donation.assistanceId?.title || donation.campaignId?.title || 'Quyên góp chung';
 
