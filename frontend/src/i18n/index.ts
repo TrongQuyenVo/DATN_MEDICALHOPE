@@ -44,7 +44,6 @@ const resources = {
       patient: 'Bệnh nhân',
       doctor: 'Bác sĩ',
       admin: 'Quản trị viên',
-      charity_admin: 'Quản lý từ thiện',
       
       // Dashboard
       welcome: 'Chào mừng',
@@ -220,7 +219,6 @@ const resources = {
       patient: 'Patient',
       doctor: 'Doctor',
       admin: 'Admin',
-      charity_admin: 'Charity Admin',
       
       // Dashboard
       welcome: 'Welcome',

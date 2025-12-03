@@ -7,7 +7,6 @@ import { useMemo } from 'react';
 import PatientDashboard from '@/components/dashboard/PatientDashboard';
 import DoctorDashboard from '@/components/dashboard/DoctorDashboard';
 import AdminDashboard from '@/components/dashboard/AdminDashboard';
-import CharityAdminDashboard from '@/components/dashboard/CharityAdminDashboard';
 
 export default function Dashboard() {
   const { user } = useAuthStore();
@@ -71,8 +70,6 @@ export default function Dashboard() {
         return pickMessage(doctorMessages);
       case 'patient':
         return pickMessage(patientMessages);
-      case 'charity_admin':
-        return pickMessage(charityMessages);
       case 'admin':
         return pickMessage(adminMessages);
       default:
@@ -91,8 +88,6 @@ export default function Dashboard() {
         return <DoctorDashboard />;
       case 'admin':
         return <AdminDashboard />;
-      case 'charity_admin':
-        return <CharityAdminDashboard />;
       default:
         return (
           <div className="text-center">

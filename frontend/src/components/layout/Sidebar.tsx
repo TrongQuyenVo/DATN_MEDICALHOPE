@@ -95,11 +95,11 @@ export function Sidebar({ className }: SidebarProps) {
         { path: '/testimonials', icon: HandHeart, label: 'Quản lý đánh giá' },
         { path: '/analytics', icon: BarChart3, label: 'Thống kê' },
       ],
-      charity_admin: [
-        { path: '/patients', icon: Users, label: t('patients') },
-        { path: '/donations', icon: Gift, label: t('donations') },
-        { path: '/assistance', icon: HandHeart, label: t('assistance') },
-      ],
+      // charity_admin: [
+      //   { path: '/patients', icon: Users, label: t('patients') },
+      //   { path: '/donations', icon: Gift, label: t('donations') },
+      //   { path: '/assistance', icon: HandHeart, label: t('assistance') },
+      // ],
     };
 
     return [...commonItems, ...(roleSpecificItems[user.role] || [])];

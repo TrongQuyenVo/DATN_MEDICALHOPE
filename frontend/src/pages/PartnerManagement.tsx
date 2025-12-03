@@ -48,7 +48,7 @@ interface Pagination {
 
 export function PartnerManagement() {
   const { user } = useAuthStore();
-  const isAdmin = user?.role === 'admin' || user?.role === 'charity_admin';
+  const isAdmin = user?.role === 'admin';
   const [partners, setPartners] = useState<Partner[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     total: 0,
@@ -242,7 +242,7 @@ export function PartnerManagement() {
   };
 
   // Kiểm tra quyền
-  if (!user || !['admin', 'charity_admin'].includes(user.role)) {
+  if (!user || !['admin'].includes(user.role)) {
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-red-600 font-medium">Bạn không có quyền truy cập trang này</p>

@@ -4,7 +4,6 @@ const router = express.Router();
 const User = require("../models/User");
 const Doctor = require("../models/Doctor");
 const Donation = require("../models/Donation");
-const CharityOrg = require("../models/CharityOrg");
 const PatientAssistance = require("../models/PatientAssistance");
 const Patient = require("../models/Patient");
 const { auth, authorize } = require("../middleware/auth");
@@ -33,7 +32,7 @@ const formatRelativeTime = (date) => {
 router.get(
   "/dashboard",
   auth,
-  authorize("admin", "charity_admin"),
+  authorize("admin"),
   async (req, res) => {
     try {
       const now = new Date();

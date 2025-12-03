@@ -228,7 +228,7 @@ exports.updateAppointmentStatus = async (req, res) => {
           message: "Bệnh nhân chỉ có thể hủy lịch hẹn",
         });
       }
-    } else if (userRole !== "admin" && userRole !== "charity_admin") {
+    } else if (userRole !== "admin") {
       console.log("❌ Unauthorized role");
       return res.status(403).json({
         success: false,
@@ -398,7 +398,7 @@ exports.cancelAppointment = async (req, res) => {
           message: "Bạn không có quyền hủy lịch hẹn này",
         });
       }
-    } else if (userRole !== "admin" && userRole !== "charity_admin") {
+    } else if (userRole !== "admin") {
       console.log("❌ Unauthorized role");
       return res.status(403).json({
         success: false,

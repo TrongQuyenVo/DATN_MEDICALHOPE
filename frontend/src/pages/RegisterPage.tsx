@@ -89,7 +89,6 @@ export default function RegisterPage() {
   const roleOptions = [
     { value: 'patient', label: t('patient'), description: 'Tôi cần được hỗ trợ y tế' },
     { value: 'doctor', label: t('doctor'), description: 'Tôi muốn làm tình nguyện viên' },
-    { value: 'charity_admin', label: t('charity_admin'), description: 'Tôi đại diện tổ chức từ thiện' },
   ];
 
   return (

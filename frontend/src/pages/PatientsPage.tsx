@@ -202,7 +202,6 @@ export default function PatientsPage() {
     switch (user.role) {
       case 'doctor': return 'Danh sách bệnh nhân';
       case 'admin': return 'Quản lý bệnh nhân';
-      case 'charity_admin': return 'Bệnh nhân cần hỗ trợ';
       default: return 'Bệnh nhân';
     }
   };
@@ -211,7 +210,6 @@ export default function PatientsPage() {
     switch (user.role) {
       case 'doctor': return 'Các bệnh nhân đã khám và theo dõi';
       case 'admin': return 'Quản lý thông tin và xác thực bệnh nhân';
-      case 'charity_admin': return 'Danh sách bệnh nhân có hoàn cảnh khó khăn cần hỗ trợ';
       default: return 'Danh sách bệnh nhân';
     }
   };
@@ -220,8 +218,6 @@ export default function PatientsPage() {
     switch (user.role) {
       case 'doctor':
         return patients.filter(p => p.condition !== 'Khỏe mạnh');
-      case 'charity_admin':
-        return patients.filter(p => ['very_poor', 'poor'].includes(p.economicStatus));
       case 'admin':
         return patients;
       default:
@@ -429,12 +425,6 @@ export default function PatientsPage() {
                             </Button>
                           )}
 
-                          {user.role === 'charity_admin' && (
-                            <Button size="sm" variant="outline" className="text-xs">
-                              Hỗ trợ
-                            </Button>
-                          )}
-
                           {user.role === 'doctor' && (
                             <Button
                               size="sm"
@@ -454,9 +444,7 @@ export default function PatientsPage() {
             ))
           ) : (
             <div className="col-span-full text-center py-8 text-muted-foreground">
-              {user.role === 'charity_admin'
-                ? 'Không có bệnh nhân nào cần hỗ trợ'
-                : 'Không có bệnh nhân nào'}
+              Không có bệnh nhân nào để hiển thị.
             </div>
           )}
         </div>

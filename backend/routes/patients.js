@@ -31,7 +31,7 @@ router.put(
 router.get(
   "/",
   auth,
-  authorize("admin", "charity_admin", "doctor"),
+  authorize("admin", "doctor"),
   patientController.getAllPatients
 );
 
@@ -39,7 +39,7 @@ router.get(
 router.patch(
   "/:id/verify",
   auth,
-  authorize("admin", "charity_admin"),
+  authorize("admin"),
   patientController.verifyPatient
 );
 

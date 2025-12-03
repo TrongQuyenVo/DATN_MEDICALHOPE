@@ -23,7 +23,7 @@ export default function ProfilePage() {
   const [avatarError, setAvatarError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isAdmin = user?.role === 'admin' || user?.role === 'charity_admin';
+  const isAdmin = user?.role === 'admin';
   const isPatient = user?.role === 'patient';
 
   // XỬ LÝ URL AVATAR

@@ -302,8 +302,7 @@ export default function AppointmentsPage() {
                       </div>
 
                       {/* Hiển thị tên bệnh nhân cho admin */}
-                      {(user.role === "admin" ||
-                        user.role === "charity_admin") && (
+                      {(user.role === "admin") && (
                         <div className="text-sm text-muted-foreground">
                           Bệnh nhân:{" "}
                           {appointment.patientId?.userId?.fullName ||
@@ -362,8 +361,7 @@ export default function AppointmentsPage() {
                           )}
 
                         {/* Admin */}
-                        {(user.role === "admin" ||
-                          user.role === "charity_admin") &&
+                        {(user.role === "admin") &&
                           ["scheduled", "pending"].includes(
                             appointment.status
                           ) && (

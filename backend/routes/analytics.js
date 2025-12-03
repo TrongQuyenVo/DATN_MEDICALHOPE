@@ -5,7 +5,6 @@ const Donation = require("../models/Donation");
 const Appointment = require("../models/Appointment");
 const PatientAssistance = require("../models/PatientAssistance");
 const Doctor = require("../models/Doctor");
-const CharityOrg = require("../models/CharityOrg");
 
 // IMPORT THIẾU → ĐÃ THÊM
 const { auth, authorize } = require("../middleware/auth");
@@ -177,14 +176,12 @@ router.get("/admin-dashboard", auth, authorize("admin"), async (req, res) => {
           {
             patient: "Bệnh nhân",
             doctor: "Bác sĩ",
-            charity_admin: "Quản trị từ thiện",
             admin: "Quản trị viên",
           }[d._id] || d._id,
         count: d.count,
         color: {
           patient: "#3b82f6",
           doctor: "#10b981",
-          charity_admin: "#f59e0b",
           admin: "#ef4444",
         }[d._id],
       })),
@@ -216,63 +213,6 @@ router.get("/admin-dashboard", auth, authorize("admin"), async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
-
-// ===============================================
-// 2. DASHBOARD CHO CHARITY ADMIN (GIỮ NGUYÊN CODE CŨ)
-// ===============================================
-router.get(
-  "/charity-dashboard",
-  auth,
-  authorize("charity_admin"),
-  async (req, res) => {
-    try {
-      const totalDonations = await Donation.aggregate([
-        { $match: { status: "completed" } },
-        { $group: { _id: null, total: { $sum: "$amount" } } },
-      ]);
-
-      const patientsHelped = await PatientAssistance.countDocuments({
-        status: "completed",
-      });
-      const pendingRequests = await PatientAssistance.countDocuments({
-        status: "pending",
-      });
-
-      // Tính tăng trưởng (so sánh tháng này vs tháng trước)
-      const now = new Date();
-      const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-
-      const donationsThisMonth = await Donation.countDocuments({
-        status: "completed",
-        createdAt: { $gte: thisMonth },
-      });
-      const donationsLastMonth = await Donation.countDocuments({
-        status: "completed",
-        createdAt: { $gte: lastMonth, $lt: thisMonth },
-      });
-
-      const donationGrowth =
-        donationsLastMonth === 0
-          ? 100
-          : Math.round(
-              ((donationsThisMonth - donationsLastMonth) / donationsLastMonth) *
-                100
-            );
-
-      res.json({
-        totalDonations: totalDonations[0]?.total || 0,
-        patientsHelped,
-        pendingRequests,
-        donationGrowth,
-        newPatients: 23, // Có thể tính động
-        newRequests: 12,
-      });
-    } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
-  }
-);
 
 // ===============================================
 // 3. PENDING COUNTS (MỚI – THÊM VÀO CUỐI)

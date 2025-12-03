@@ -32,7 +32,7 @@ export default function DonationsPage() {
   const { user } = useAuthStore();
   const [donations, setDonations] = useState<Donation[]>([]);
   const [loading, setLoading] = useState(true);
-  const isAdmin = user?.role === 'admin' || user?.role === 'charity_admin';
+  const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
     if (!user) return;

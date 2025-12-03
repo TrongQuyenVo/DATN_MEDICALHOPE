@@ -74,7 +74,7 @@ export default function AssistanceDetailPage() {
         const req = data.data;
 
         // === KIỂM TRA QUYỀN TRUY CẬP ===
-        const isAdmin = ['admin', 'charity_admin', 'patient'].includes(user.role);
+        const isAdmin = ['admin', 'patient'].includes(user.role);
         const isOwner = String(req.patientId._id) === String(currentPatientId);
 
         if (!isAdmin && !isOwner) {
@@ -141,7 +141,7 @@ export default function AssistanceDetailPage() {
     ? (assistance.raisedAmount / assistance.requestedAmount) * 100
     : 0;
 
-  const isAdmin = ['admin', 'charity_admin', 'patient'].includes(user!.role);
+  const isAdmin = ['admin', 'patient'].includes(user!.role);
   const isOwner = String(assistance.patientId._id) === String(currentPatientId);
   const canDonate = assistance.status === 'approved';
   const canViewFullInfo = isAdmin || isOwner; // Chỉ chủ hoặc admin thấy thông tin thật

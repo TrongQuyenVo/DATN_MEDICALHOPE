@@ -14,7 +14,7 @@ export default function AnalyticsPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const { user } = useAuthStore();
-  const isAdmin = user?.role === 'admin' || user?.role === 'charity_admin';
+  const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
     const fetchData = async () => {

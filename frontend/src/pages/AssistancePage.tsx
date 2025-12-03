@@ -98,7 +98,7 @@ export default function AssistancePage() {
   if (!user) return null;
 
   const isPatient = user.role === 'patient';
-  const isAdmin = ['admin', 'charity_admin'].includes(user.role);
+  const isAdmin = ['admin'].includes(user.role);
 
   const myPatientId = (user as any).patientId?._id || user.id;
 

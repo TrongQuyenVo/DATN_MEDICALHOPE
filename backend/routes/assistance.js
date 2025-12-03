@@ -59,7 +59,7 @@ router.get("/", auth, assistanceController.getAssistances);
 router.patch(
   "/:id/status",
   auth,
-  authorize("admin", "charity_admin"),
+  authorize("admin"),
   assistanceController.updateAssistanceStatus
 );
 router.get("/public", assistanceController.getPublicAssistances);
@@ -67,7 +67,7 @@ router.get("/:id", assistanceController.getAssistanceById);
 router.delete(
   "/:id",
   auth,
-  authorize("admin", "charity_admin"),
+  authorize("admin"),
   assistanceController.deleteAssistance
 );
 

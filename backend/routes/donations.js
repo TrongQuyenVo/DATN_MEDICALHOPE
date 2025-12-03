@@ -24,7 +24,7 @@ router.get("/vnpay-ipn", donationController.handleVnpayIpn);
 router.get(
   "/",
   auth,
-  authorize("admin", "charity_admin", "patient"),
+  authorize("admin", "patient"),
   donationController.getDonations
 );
 

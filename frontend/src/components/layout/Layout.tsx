@@ -9,7 +9,7 @@ import ScrollToTop from './ScrollToTop';
 function LayoutContent() {
   const { isCollapsed } = useSidebar();
   const { user } = useAuthStore();
-  const allowedRoles = ['patient', 'doctor', 'charity_admin'];
+  const allowedRoles = ['patient', 'doctor'];
 
   return (
     <div className="flex min-h-screen bg-background">

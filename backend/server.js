@@ -26,7 +26,6 @@ const patientRoutes = require("./routes/patients");
 const doctorRoutes = require("./routes/doctors");
 const appointmentRoutes = require("./routes/appointments");
 const donationRoutes = require("./routes/donations");
-const charityRoutes = require("./routes/charities");
 const chatbotRoutes = require("./routes/chatbot");
 const assistanceRoutes = require("./routes/assistance");
 const partnerRoutes = require("./routes/partner");
@@ -88,17 +87,11 @@ app.use("/api/patients", patientRoutes);
 app.use("/api/doctors", doctorRoutes);
 app.use("/api/appointments", appointmentRoutes);
 app.use("/api/donations", donationRoutes);
-app.use("/api/charities", charityRoutes);
 app.use("/api/chatbot", chatbotRoutes);
 app.use("/api/assistance", assistanceRoutes);
 app.use("/api/partners", partnerRoutes);
 app.use("/api/testimonials", testimonialRoutes);
-app.use(
-  "/api/analytics",
-  auth,
-  authorize("admin", "charity_admin"),
-  analyticsRoutes
-);
+app.use("/api/analytics", auth, authorize("admin"), analyticsRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/packages", packageRoutes);
 app.use("/api/events", eventRoutes);

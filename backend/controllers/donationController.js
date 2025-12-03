@@ -365,7 +365,7 @@ exports.getDonations = async (req, res) => {
     const { limit = 10, page = 1, sort = "-createdAt" } = req.query;
     let query = {};
 
-    if (!["admin", "charity_admin"].includes(req.user.role)) {
+    if (!["admin"].includes(req.user.role)) {
       query.userId = req.user._id;
     }
 

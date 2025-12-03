@@ -33,7 +33,7 @@ interface User {
   fullName: string;
   email: string;
   phone: string;
-  role: 'patient' | 'doctor' | 'admin' | 'charity_admin';
+  role: 'patient' | 'doctor' | 'admin';
   status: 'active' | 'inactive' | 'suspended';
   createdAt: string;
   lastLogin: string;
@@ -57,7 +57,7 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const { user, updateUser } = useAuthStore();
 
-  const isAdmin = user?.role === 'admin' || user?.role === 'charity_admin';
+  const isAdmin = user?.role === 'admin';
 
   // Helper: chuyển "/uploads/..." thành URL đầy đủ (giống ProfilePage / Header)
   const API_SERVER = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/api\/?$/, '');
@@ -105,7 +105,6 @@ export default function UsersPage() {
       case 'patient': return 'Bệnh nhân';
       case 'doctor': return 'Bác sĩ';
       case 'admin': return 'Quản trị viên';
-      case 'charity_admin': return 'Quản lý từ thiện';
       default: return role;
     }
   };
@@ -115,7 +114,6 @@ export default function UsersPage() {
       case 'patient': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
       case 'doctor': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
       case 'admin': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-      case 'charity_admin': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
     }
   };
@@ -237,7 +235,6 @@ export default function UsersPage() {
                 <SelectItem value="patient">Bệnh nhân</SelectItem>
                 <SelectItem value="doctor">Bác sĩ</SelectItem>
                 <SelectItem value="admin">Quản trị viên</SelectItem>
-                <SelectItem value="charity_admin">Quản lý từ thiện</SelectItem>
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>

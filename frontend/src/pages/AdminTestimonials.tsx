@@ -31,7 +31,7 @@ export default function AdminTestimonials() {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [selected, setSelected] = useState<Testimonial | null>(null);
   const { user } = useAuthStore();
-  const isAdmin = user?.role === 'admin' || user?.role === 'charity_admin';
+  const isAdmin = user?.role === 'admin';
 
 
   // 🟢 Lấy danh sách
