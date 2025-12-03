@@ -53,7 +53,7 @@ export function PartnerManagement() {
   const [pagination, setPagination] = useState<Pagination>({
     total: 0,
     page: 1,
-    limit: 10,
+    limit: 1000,
     totalPages: 1,
   });
   const [isFormOpen, setIsFormOpen] = useState(false);

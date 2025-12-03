@@ -317,7 +317,7 @@ export default function EventManagement() {
                     </button>
 
                     {events.map((event) => {
-                      const participantCount = event.participants?.length || 0;
+                      const participantCount = event.participants || 0;
 
                       return (
                         <button

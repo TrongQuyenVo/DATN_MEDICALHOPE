@@ -14,7 +14,6 @@ import { assistanceAPI } from '@/lib/api';
 import AssistanceRequestForm from '@/components/form/AssistanceRequestForm';
 import toast from 'react-hot-toast';
 import ScrollToTop from '@/components/layout/ScrollToTop';
-import ChatBubble from './ChatbotPage';
 import { useNavigate } from 'react-router-dom';
 
 interface AssistanceRequest {
@@ -83,15 +82,13 @@ export default function AssistancePage() {
     }
   };
 
-  // XÓA YÊU CẦU - CHỈ ADMIN
   const handleDeleteRequest = async (id: string) => {
     if (!window.confirm('Bạn có chắc muốn xóa yêu cầu này? Hành động này không thể hoàn tác.')) {
       return;
     }
-
     try {
-      await assistanceAPI.delete(id); // Gọi API DELETE
-      toast.success('Đã xóa yêu cầu!');
+      await assistanceAPI.delete(id);
+      toast.success('Đã xóa yêu cầu thành công!');
       await fetchRequests();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Lỗi khi xóa yêu cầu');
@@ -103,12 +100,13 @@ export default function AssistancePage() {
   const isPatient = user.role === 'patient';
   const isAdmin = ['admin', 'charity_admin'].includes(user.role);
 
+  const myPatientId = (user as any).patientId?._id || user.id;
+
   const visibleRequests = isAdmin
     ? assistanceRequests
     : assistanceRequests.filter((req) => {
-      const myPatientId = (user as any).patientId?._id || user.id;
       const isOwner = String(req.patientId._id) === String(myPatientId);
-      return isOwner || req.status === 'approved';
+      return isOwner || req.status === 'approved' || req.status === 'pending';
     });
 
   const getStatusConfig = (status: string) => {
@@ -130,7 +128,7 @@ export default function AssistancePage() {
       low: { label: 'BÌNH THƯỜNG', class: 'bg-green-600 text-white' },
     };
     const config = map[urgency as keyof typeof map] || map.low;
-    return <Badge className={config.class}>{config.label}</Badge>;
+    return <Badge className={`font-medium ${config.class}`}>{config.label}</Badge>;
   };
 
   const getRequestTypeLabel = (type: string) => {
@@ -144,6 +142,23 @@ export default function AssistancePage() {
       other: 'Khác',
     };
     return map[type] || 'Khác';
+  };
+
+  const formatVND = (amount: number) => {
+    if (amount == null || isNaN(amount)) return '0 ₫';
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND',
+      maximumFractionDigits: 0,
+    }).format(Math.round(amount));
+  };
+
+  const getPatientName = (patient: AssistanceRequest['patientId']) => {
+    if (typeof patient.userId === 'object' && patient.userId?.fullName) {
+      return patient.userId.fullName;
+    }
+    if (patient.fullName) return patient.fullName;
+    return 'Ẩn danh';
   };
 
   const stats = {
@@ -186,7 +201,7 @@ export default function AssistancePage() {
             { title: 'Tổng yêu cầu', icon: HandHeart, value: stats.total, color: 'text-primary' },
             { title: 'Chờ duyệt', icon: Clock, value: stats.pending, color: 'text-yellow-600' },
             { title: 'Đã duyệt', icon: CheckCircle, value: stats.approved, color: 'text-green-600' },
-            { title: 'Tổng hỗ trợ', icon: DollarSign, value: `${stats.totalRaised.toLocaleString('vi-VN')} VNĐ`, color: 'text-emerald-600' },
+            { title: 'Tổng hỗ trợ', icon: DollarSign, value: `${stats.totalRaised.toLocaleString('vi-VN')} ₫`, color: 'text-emerald-600' },
           ].map((stat, i) => (
             <Card key={i}>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -206,11 +221,12 @@ export default function AssistancePage() {
         <h2 className="text-2xl font-bold">Danh sách yêu cầu hỗ trợ</h2>
 
         {loading ? (
-          <div className="text-center py-16">Đang tải...</div>
+          <div className="text-center py-16 text-muted-foreground">Đang tải dữ liệu...</div>
         ) : visibleRequests.length === 0 ? (
           <Card className="text-center py-16">
             <HandHeart className="h-16 w-16 mx-auto mb-4 text-muted" />
-            <p className="text-lg">Chưa có yêu cầu nào</p>
+            <p className="text-lg text-muted-foreground">Chưa có yêu cầu hỗ trợ nào</p>
+            {isPatient && <p className="text-sm mt-2">Hãy nhấn "Gửi yêu cầu mới" để bắt đầu</p>}
           </Card>
         ) : (
           <div className="grid gap-6">
@@ -218,16 +234,6 @@ export default function AssistancePage() {
               const progress = req.requestedAmount > 0 ? (req.raisedAmount / req.requestedAmount) * 100 : 0;
               const status = getStatusConfig(req.status);
               const StatusIcon = status.icon;
-
-              function formatVND(raisedAmount: number): import("react").ReactNode | Iterable<import("react").ReactNode> {
-                if (raisedAmount == null || isNaN(Number(raisedAmount))) return '0 ₫';
-                const value = Math.round(Number(raisedAmount));
-                return new Intl.NumberFormat('vi-VN', {
-                  style: 'currency',
-                  currency: 'VND',
-                  maximumFractionDigits: 0,
-                }).format(value);
-              }
 
               return (
                 <motion.div
@@ -237,17 +243,18 @@ export default function AssistancePage() {
                   className="cursor-pointer"
                   onClick={() => navigate(`/assistance/${req._id}`)}
                 >
-                  <Card className="hover:shadow-2xl transition-all hover:border-primary border-2">
+                  <Card className="hover:shadow-xl transition-all hover:border-primary border-2">
                     <CardContent className="p-6">
                       <div className="flex flex-col lg:flex-row justify-between gap-6">
+                        {/* Thông tin chính */}
                         <div className="flex-1 space-y-4">
                           <div className="flex items-start justify-between flex-wrap gap-3">
                             <h3 className="text-2xl font-bold text-primary">
-                              {typeof req.patientId.userId === 'object' ? req.patientId.userId.fullName : req.patientId.fullName || 'Ẩn danh'}
+                              {getPatientName(req.patientId)}
                             </h3>
                             <div className="flex gap-2">
                               {getUrgencyBadge(req.urgency)}
-                              <Badge className={`${status.bg} ${status.color}`}>
+                              <Badge className={`${status.bg} ${status.color} font-medium`}>
                                 <StatusIcon className="h-3 w-3 mr-1" /> {status.label}
                               </Badge>
                             </div>
@@ -259,43 +266,79 @@ export default function AssistancePage() {
                           <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                             <span>{new Date(req.createdAt).toLocaleDateString('vi-VN')}</span>
                             <span>{getRequestTypeLabel(req.requestType)}</span>
-                            {req.approvedBy?.fullName && <span>Duyệt: {req.approvedBy.fullName}</span>}
+                            {req.approvedBy?.fullName && (
+                              <span className="text-green-700 font-medium">
+                                Duyệt bởi: {req.approvedBy.fullName}
+                              </span>
+                            )}
                           </div>
                         </div>
 
-                        <div className="flex flex-col items-end gap-4 w-full lg:w-80">
+                        {/* Thanh tiến độ + Nút hành động */}
+                        <div className="flex flex-col items-end gap-5 w-full lg:w-80">
+                          {/* Progress chỉ hiện khi đã duyệt */}
                           {req.status === 'approved' && (
                             <div className="w-full space-y-2 text-right">
                               <div className="flex justify-between text-lg font-bold">
-                                <span>{formatVND(req.raisedAmount)}</span>
+                                <span className="text-primary">{formatVND(req.raisedAmount)}</span>
                                 <span className="text-muted-foreground">/ {formatVND(req.requestedAmount)}</span>
                               </div>
                               <Progress value={progress} className="h-3" />
-                              <p className="text-sm">{progress.toFixed(1)}% hoàn thành</p>
+                              <p className="text-sm text-muted-foreground">{progress.toFixed(1)}% đã quyên góp</p>
                             </div>
                           )}
 
-                          <div className="flex gap-3 w-full">
-                            {isAdmin && req.status === 'pending' ? (
+                          {/* Nút hành động */}
+                          <div className="flex gap-3 w-full flex-wrap">
+                            {/* Admin: Duyệt / Từ chối (chỉ khi pending) */}
+                            {isAdmin && req.status === 'pending' && (
                               <>
-                                <Button size="sm" onClick={(e) => { e.stopPropagation(); handleApproveRequest(req._id); }}>
+                                <Button
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleApproveRequest(req._id);
+                                  }}
+                                >
                                   <CheckCircle className="mr-1 h-4 w-4" /> Duyệt
                                 </Button>
-                                <Button size="sm" variant="destructive" onClick={(e) => { e.stopPropagation(); handleRejectRequest(req._id); }}>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRejectRequest(req._id);
+                                  }}
+                                >
                                   <XCircle className="mr-1 h-4 w-4" /> Từ chối
                                 </Button>
                               </>
-                            ) : (
-                              <>
-                                <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); navigate(`/assistance/${req._id}`); }}>
-                                  <Eye className="mr-1 h-4 w-4" /> Xem chi tiết
-                                </Button>
-                                {isAdmin && (
-                                  <Button size="sm" variant="destructive" onClick={(e) => { e.stopPropagation(); handleDeleteRequest(req._id); }}>
-                                    <Trash2 className="h-4 w-4" /> Xóa
-                                  </Button>
-                                )}
-                              </>
+                            )}
+
+                            {/* Luôn có nút Xem chi tiết */}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/assistance/${req._id}`);
+                              }}
+                            >
+                              <Eye className="mr-1 h-4 w-4" /> Xem chi tiết
+                            </Button>
+
+                            {/* Admin: Xóa yêu cầu */}
+                            {isAdmin && (
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteRequest(req._id);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             )}
                           </div>
                         </div>
@@ -309,10 +352,18 @@ export default function AssistancePage() {
         )}
       </div>
 
-      {/* FORMS */}
-      <AssistanceRequestForm open={showRequestForm} onOpenChange={setShowRequestForm} />
+      {/* Form gửi yêu cầu */}
+      <AssistanceRequestForm
+        open={showRequestForm}
+        onOpenChange={(open) => {
+          setShowRequestForm(open);
+          if (!open) {
+            fetchRequests();
+          }
+        }}
+      />
+
       <ScrollToTop />
-      {/* {!isAdmin && <ChatBubble />} */}
     </motion.div>
   );
 }

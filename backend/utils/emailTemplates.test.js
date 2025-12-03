@@ -22,3 +22,4 @@ test("donationThankYou should return correct HTML string", () => {
   expect(html).toContain("500,000");
   expect(html).toContain("Hỗ trợ bệnh nhân nghèo");
 });
+

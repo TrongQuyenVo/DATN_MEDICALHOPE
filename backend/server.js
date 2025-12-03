@@ -37,6 +37,7 @@ const packageRoutes = require("./routes/package");
 const eventRoutes = require("./routes/event");
 const eventRegistrationRoutes = require("./routes/eventRegistrations");
 const registrationRoutes = require("./routes/registrations");
+const notificationRoutes = require("./routes/notification");
 // Security middleware
 app.use(
   helmet({
@@ -103,6 +104,7 @@ app.use("/api/packages", packageRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/event-registrations", eventRegistrationRoutes);
 app.use("/api/registrations", registrationRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // Health check
 app.get("/health", (req, res) => {
