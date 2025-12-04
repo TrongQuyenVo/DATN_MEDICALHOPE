@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/layout/NavHeader';
 import Footer from '@/components/layout/Footer';
-import ScrollToTop from '@/components/layout/ScrollToTop';
 import { partnersAPI } from '@/lib/api';
 import ChatBubble from './ChatbotPage';
 
@@ -189,7 +188,6 @@ export default function OrganizationsPage() {
         </motion.div>
       </div>
       <Footer />
-      <ScrollToTop />
       <ChatBubble />
     </div>
   );

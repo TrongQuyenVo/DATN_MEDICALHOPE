@@ -11,7 +11,6 @@ import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/layout/NavHeader';
 import Footer from '@/components/layout/Footer';
-import ScrollToTop from '@/components/layout/ScrollToTop';
 import ChatBubble from './ChatbotPage';
 import { eventsAPI } from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -272,7 +271,6 @@ export default function ProgramsPage() {
       </div>
 
       <Footer />
-      <ScrollToTop />
       <ChatBubble />
     </div>
   );

@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { Soup } from 'lucide-react';
 import Header from '@/components/layout/NavHeader';
 import Footer from '@/components/layout/Footer';
-import ScrollToTop from '@/components/layout/ScrollToTop';
 import ChatBubble from './ChatbotPage';
 import { partnersAPI } from '@/lib/api';
 
@@ -264,7 +263,6 @@ const ExtendedFoodDistributionList = () => {
       </section>
       <Footer />
       <ChatBubble />
-      <ScrollToTop />
     </div>
   );
 };

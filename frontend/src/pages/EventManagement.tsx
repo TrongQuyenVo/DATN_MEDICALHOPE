@@ -22,6 +22,8 @@ import {
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
+import ChatBubble from './ChatbotPage';
+import { useAuthStore } from '@/stores/authStore';
 
 const eventSchema = z.object({
   title: z.string().min(5, 'Tên sự kiện ít nhất 5 ký tự'),
@@ -55,6 +57,8 @@ export default function EventManagement() {
     resolver: zodResolver(eventSchema),
     defaultValues: { participants: 0, target: 100 },
   });
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === 'admin';
 
   // === FETCH EVENTS ===
   const fetchEvents = async () => {
@@ -555,6 +559,7 @@ export default function EventManagement() {
           </form>
         </DialogContent>
       </Dialog>
+      {!isAdmin && <ChatBubble />}
     </div>
   );
 }

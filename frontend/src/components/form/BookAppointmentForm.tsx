@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import toast from "react-hot-toast";
 import { useAuthStore } from "@/stores/authStore";
 import { doctorsAPI, appointmentsAPI } from "@/lib/api";
+import ChatBubble from "@/pages/ChatbotPage";
 
 const schema = yup.object({
   doctorId: yup.string().required("Vui lòng chọn bác sĩ"),
@@ -313,6 +314,7 @@ export default function BookAppointmentForm({ open, onOpenChange, doctor, onSucc
           </div>
         </form>
       </DialogContent>
+      <ChatBubble />
     </Dialog>
   );
 }

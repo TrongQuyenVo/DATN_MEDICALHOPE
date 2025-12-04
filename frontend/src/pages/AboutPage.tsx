@@ -1,15 +1,12 @@
 import { motion } from 'framer-motion';
 import { Heart, Users, Award, Shield, HeartHandshake, Activity, Sparkles, Eye, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
-import teamImg from '@/assets/team-collaboration.jpg';
-import historyImg from '@/assets/history-timeline.jpg';
 import volunteerCampImg from '@/assets/volunteer-medical-camp.jpg';
 import Header from '@/components/layout/NavHeader';
 import Footer from '@/components/layout/Footer';
-import ScrollToTop from '@/components/layout/ScrollToTop';
 import ChatBubble from './ChatbotPage';
+import { useAuthStore } from '@/stores/authStore';
 
 export default function AboutPage() {
   const navigate = useNavigate();
@@ -19,6 +16,8 @@ export default function AboutPage() {
     navigate(path);
   };
 
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === 'admin';
   const historyMilestones = [
     { year: '2015', event: 'Thành lập nền tảng MedicalHope+', description: 'Bắt đầu từ một nhóm nhỏ bác sĩ tình nguyện tại TP. Hồ Chí Minh.' },
     { year: '2018', event: 'Mở rộng toàn quốc', description: 'Hợp tác với hơn 50 tổ chức từ thiện, hỗ trợ hơn 10.000 bệnh nhân.' },
@@ -215,8 +214,7 @@ export default function AboutPage() {
       </section>
 
       <Footer />
-      <ScrollToTop />
-      <ChatBubble />
+      {!isAdmin && <ChatBubble />}
     </div>
   );
 }

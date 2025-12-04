@@ -4,6 +4,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import { getImageUrl } from '@/lib/utils';
+import ChatBubble from './ChatbotPage';
+import { useAuthStore } from '@/stores/authStore';
 
 interface Package {
   _id: string;
@@ -29,10 +31,12 @@ export default function PackageDetailModal({
   onOpenChange,
   onRegister,
 }: PackageDetailModalProps) {
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === 'admin';
+
   if (!pkg) return null;
 
   const imageSrc = pkg.image ? getImageUrl(pkg.image) : '/placeholder-medical.jpg';
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl p-6">
@@ -82,6 +86,8 @@ export default function PackageDetailModal({
           </Button>
         </div>
       </DialogContent>
+      {!isAdmin && <ChatBubble />}
+
     </Dialog>
   );
 }

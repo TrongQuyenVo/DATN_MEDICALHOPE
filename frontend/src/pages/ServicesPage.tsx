@@ -10,7 +10,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Header from '@/components/layout/NavHeader';
 import Footer from '@/components/layout/Footer';
-import ScrollToTop from '@/components/layout/ScrollToTop';
 import ChatBubble from './ChatbotPage';
 import PackageDetailModal from './PackageDetailModal';
 import PackageRegisterForm from '@/components/form/PackageRegisterForm';
@@ -213,7 +212,7 @@ export default function ServicesPage() {
           <PackageRegisterForm
             pkg={{
               title: selectedPackage.title,
-              value: selectedPackage.value || selectedPackage._id,
+              _id: selectedPackage._id,
             }}
             open={formOpen}
             onOpenChange={setFormOpen}
@@ -222,7 +221,6 @@ export default function ServicesPage() {
       )}
 
       <Footer />
-      <ScrollToTop />
       <ChatBubble />
     </div>
   );

@@ -25,6 +25,8 @@ import {
   Package, Plus, Edit, Trash2, Upload, Image as ImageIcon,
   FileText, CheckCircle, XCircle, Eye, Users
 } from 'lucide-react';
+import ChatBubble from './ChatbotPage';
+import { useAuthStore } from '@/stores/authStore';
 
 const packageSchema = z.object({
   title: z.string().min(5, 'Tên gói ít nhất 5 ký tự'),
@@ -69,6 +71,8 @@ export default function PackageManagement() {
   const [selectedReg, setSelectedReg] = useState<Registration | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [openReject, setOpenReject] = useState(false);
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === 'admin';
 
   const {
     register,
@@ -578,6 +582,7 @@ export default function PackageManagement() {
           </div>
         </DialogContent>
       </Dialog>
+      {!isAdmin && <ChatBubble />}
     </div>
   );
 }

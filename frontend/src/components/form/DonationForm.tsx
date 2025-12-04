@@ -31,6 +31,7 @@ import { donationsAPI } from "@/lib/api"; // Assume you have donationAPI
 import { assistanceAPI } from "@/lib/api";
 import { useAppStore } from "@/stores/appStore";
 import VNpay from "@/assets/vnpay-logo.png";
+import ChatBubble from "@/pages/ChatbotPage";
 
 interface PatientAssistance {
   _id: string;
@@ -407,6 +408,7 @@ export default function DonationForm({ open, onOpenChange, assistanceId }: Donat
           </div>
         </form>
       </DialogContent>
+      <ChatBubble />
     </Dialog>
   );
 }

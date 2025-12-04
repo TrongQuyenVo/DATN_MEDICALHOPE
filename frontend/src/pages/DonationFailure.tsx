@@ -1,9 +1,13 @@
+import Footer from "@/components/layout/Footer";
+import NavHeader from "@/components/layout/NavHeader";
 import { Link, XCircle } from "lucide-react";
+import ChatBubble from "./ChatbotPage";
 
 // pages/DonationFailure.tsx
 export default function DonationFailure() {
   return (
     <div className="min-h-screen bg-red-50 flex items-center justify-center p-6">
+      <NavHeader />
       <div className="bg-white rounded-3xl shadow-2xl p-12 text-center">
         <XCircle className="w-24 h-24 text-red-500 mx-auto mb-6" />
         <h1 className="text-4xl font-bold text-red-600 mb-4">Thanh toán thất bại</h1>
@@ -12,6 +16,8 @@ export default function DonationFailure() {
           Quay lại trang chủ
         </Link>
       </div>
+      <ChatBubble />
+      <Footer />
     </div>
   );
 }

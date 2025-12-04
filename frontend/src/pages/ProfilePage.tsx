@@ -6,11 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Camera, User, Upload, Heart } from "lucide-react";
+import { Camera, User, Upload } from "lucide-react";
 import { usersAPI } from "@/lib/api";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
-import ScrollToTop from "@/components/layout/ScrollToTop";
 import ChatBubble from "./ChatbotPage";
 
 export default function ProfilePage() {
@@ -407,8 +406,8 @@ export default function ProfilePage() {
           )}
         </CardContent>
       </Card>
-      <ScrollToTop />
-      {/* {!isAdmin && <ChatBubble />} */}
+
+      {!isAdmin && <ChatBubble />}
     </motion.div>
   );
 }

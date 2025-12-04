@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import toast from 'react-hot-toast';
 import { eventRegistrationsAPI } from '@/lib/api';
+import ChatBubble from '@/pages/ChatbotPage';
 
 interface Props {
   event: any;
@@ -70,6 +71,7 @@ export default function EventRegisterForm({ event, open, onOpenChange, onSuccess
           </div>
         </form>
       </DialogContent>
+      <ChatBubble />
     </Dialog>
   );
 }

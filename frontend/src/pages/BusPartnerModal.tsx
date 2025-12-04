@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { X, MapPin, Phone, Bus, Clock, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import ChatBubble from "./ChatbotPage";
 
 interface Partner {
   _id: string;
@@ -86,7 +87,7 @@ export default function BusPartnerModal({ partner, open, onOpenChange }: BusPart
       {/* Modal */}
       <div className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header ảnh */}
-        <div className="relative h-80 flex-shrink-0">
+        <div className="relative h-60 flex-shrink-0">
           <img
             src={img}
             alt={partner.name}
@@ -215,6 +216,7 @@ export default function BusPartnerModal({ partner, open, onOpenChange }: BusPart
           </div>
         </div>
       </div>
+      <ChatBubble />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { Home, Heart, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import ChatBubble from "./ChatbotPage";
 
 const NotFound = () => {
   const location = useLocation();
@@ -55,6 +56,7 @@ const NotFound = () => {
           </div>
         </div>
       </motion.div>
+      <ChatBubble />
     </div>
   );
 };

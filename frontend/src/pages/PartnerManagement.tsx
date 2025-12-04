@@ -14,7 +14,6 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/stores/authStore';
 import { partnersAPI } from '@/lib/api';
-import ScrollToTop from '@/components/layout/ScrollToTop';
 import ChatBubble from './ChatbotPage';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -707,7 +706,6 @@ export function PartnerManagement() {
         </TabsContent>
       </Tabs>
 
-      <ScrollToTop />
       {!isAdmin && <ChatBubble />}
     </motion.div>
   );

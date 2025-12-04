@@ -4,7 +4,6 @@ import { TrendingUp, TrendingDown, Users, DollarSign, CalendarDays, Target, Awar
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import ChatBubble from './ChatbotPage';
-import ScrollToTop from '@/components/layout/ScrollToTop';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { analyticsAPI } from '@/lib/api';
@@ -413,8 +412,6 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
       </div>
-
-      <ScrollToTop />
       {!isAdmin && <ChatBubble />}
     </motion.div>
   );

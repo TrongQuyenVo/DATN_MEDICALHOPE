@@ -28,6 +28,7 @@ import { vi } from 'date-fns/locale';
 import { useQuery } from '@tanstack/react-query';
 import { appointmentsAPI, doctorsAPI } from '@/lib/api';
 import { useAuthStore } from '@/stores/authStore';
+import ChatBubble from '@/pages/ChatbotPage';
 
 export default function DoctorDashboard() {
   const navigate = useNavigate();
@@ -454,6 +455,7 @@ export default function DoctorDashboard() {
           </Card>
         </motion.div>
       </div>
+      <ChatBubble />
     </div>
   );
 }

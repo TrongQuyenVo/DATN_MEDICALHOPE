@@ -13,7 +13,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Header from '@/components/layout/NavHeader';
 import Footer from '@/components/layout/Footer';
-import ScrollToTop from '@/components/layout/ScrollToTop';
 import ChatBubble from './ChatbotPage';
 import { eventsAPI } from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -330,7 +329,6 @@ export default function EventDetailPage() {
       </div>
 
       <Footer />
-      <ScrollToTop />
       <ChatBubble />
     </>
   );

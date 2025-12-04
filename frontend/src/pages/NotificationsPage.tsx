@@ -3,7 +3,6 @@ import { Bell, Calendar, Gift, AlertTriangle, CheckCircle, Clock } from 'lucide-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import ScrollToTop from '@/components/layout/ScrollToTop';
 import ChatBubble from './ChatbotPage';
 
 export default function NotificationsPage() {
@@ -215,7 +214,6 @@ export default function NotificationsPage() {
           </div>
         </CardContent>
       </Card>
-      <ScrollToTop />
       <ChatBubble />
     </motion.div>
   );

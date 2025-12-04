@@ -18,6 +18,7 @@ import { Loading } from '@/components/ui/loading';
 import { authAPI } from '@/lib/api';
 import { useAuthStore } from '@/stores/authStore';
 import { useTranslation } from 'react-i18next';
+import ChatBubble from './ChatbotPage';
 
 const schema = yup.object({
   fullName: yup.string().required('Họ và tên là bắt buộc'),
@@ -380,6 +381,7 @@ export default function RegisterPage() {
           </Link>
         </div>
       </motion.div>
+      <ChatBubble />
     </div>
   );
 }

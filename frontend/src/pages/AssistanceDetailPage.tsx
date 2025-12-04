@@ -3,8 +3,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  User, Stethoscope, DollarSign, FileText, Calendar,
-  Heart, Download, AlertCircle, CheckCircle2, XCircle, ArrowLeft, Image as ImageIcon
+  User, Stethoscope, DollarSign,
+  Heart, AlertCircle, CheckCircle2, XCircle, ArrowLeft, Image as ImageIcon
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +17,6 @@ import { useAuthStore } from '@/stores/authStore';
 import { assistanceAPI } from '@/lib/api';
 import DonationForm from '@/components/form/DonationForm';
 import toast from 'react-hot-toast';
-import ScrollToTop from '@/components/layout/ScrollToTop';
 import ChatBubble from './ChatbotPage';
 
 interface AssistanceRequest {
@@ -331,7 +330,6 @@ export default function AssistanceDetailPage() {
           assistanceId={assistance._id}
         />
       )}
-      <ScrollToTop />
       {!isAdmin && <ChatBubble />}
     </>
   );

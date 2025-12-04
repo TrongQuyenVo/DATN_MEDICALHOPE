@@ -24,7 +24,6 @@ import {
 } from '@/components/ui/select';
 import { usersAPI } from '@/lib/api';
 import toast from 'react-hot-toast';
-import ScrollToTop from '@/components/layout/ScrollToTop';
 import ChatBubble from './ChatbotPage';
 import { useAuthStore } from "@/stores/authStore";
 
@@ -353,7 +352,6 @@ export default function UsersPage() {
           ))}
         </div>
       )}
-      <ScrollToTop />
       {!isAdmin && <ChatBubble />}
     </motion.div>
   );

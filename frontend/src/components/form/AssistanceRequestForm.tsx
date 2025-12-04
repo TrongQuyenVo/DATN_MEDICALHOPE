@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import toast from 'react-hot-toast';
 import { assistanceAPI } from '@/lib/api';
+import ChatBubble from '@/pages/ChatbotPage';
+import { useAuthStore } from '@/stores/authStore';
 
 interface AssistanceRequestFormProps {
   open: boolean;
@@ -43,6 +45,8 @@ export default function AssistanceRequestForm({ open, onOpenChange }: Assistance
   const { t } = useTranslation();
   const [attachments, setAttachments] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === 'admin';
 
   const {
     register,
@@ -333,6 +337,8 @@ export default function AssistanceRequestForm({ open, onOpenChange }: Assistance
           </div>
         </form>
       </DialogContent>
+      {!isAdmin && <ChatBubble />}
+
     </Dialog>
   );
 }

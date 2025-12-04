@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Send, Heart } from 'lucide-react';
+import ChatBubble from '@/pages/ChatbotPage';
 
 interface Props {
   formData: { treatment: string; content: string };
@@ -62,6 +63,7 @@ export default function AnonymousTestimonialForm({
           Gửi lời cảm ơn
         </Button>
       </div>
+      <ChatBubble />
     </div>
   );
 }

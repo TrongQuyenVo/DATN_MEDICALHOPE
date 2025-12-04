@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Trash2, Eye, EyeOff, Heart, Info } from "lucide-react";
+import { Trash2, Eye, EyeOff, Heart, Info, Scroll } from "lucide-react";
 import axios from "axios";
 import toast from "react-hot-toast";
 import ChatBubble from "./ChatbotPage";
@@ -263,6 +263,7 @@ export default function AdminTestimonials() {
               </Button>
             </div>
           </motion.div>
+          {!isAdmin && <ChatBubble />}
         </div>
 
       )}

@@ -1,7 +1,6 @@
 // pages/DonationSuccess.tsx
 import Footer from "@/components/layout/Footer";
 import NavHeader from "@/components/layout/NavHeader";
-import ScrollToTop from "@/components/layout/ScrollToTop";
 import { Heart } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import ChatBubble from "./ChatbotPage";
@@ -41,7 +40,6 @@ export default function DonationSuccess() {
         </div>
       </div>
       <Footer />
-      <ScrollToTop />
       <ChatBubble />
     </>
   );

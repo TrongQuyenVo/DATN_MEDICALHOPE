@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { X, MapPin, Phone, Clock, Users, Soup } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import ChatBubble from "./ChatbotPage";
 
 interface FoodPoint {
   _id: string;
@@ -82,9 +83,9 @@ export default function FoodPointModal({ point, open, onOpenChange }: FoodPointM
     <div className={`fixed inset-0 z-[100] flex items-center justify-center p-4 ${open ? 'block' : 'hidden'}`}>
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => onOpenChange(false)} />
 
-      <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header ảnh */}
-        <div className="relative h-64 flex-shrink-0">
+        <div className="relative h-60 flex-shrink-0">
           <img
             src={img}
             alt={point.name}
@@ -217,6 +218,7 @@ export default function FoodPointModal({ point, open, onOpenChange }: FoodPointM
           </div>
         </div>
       </div>
+      <ChatBubble />
     </div>
   );
 }

@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { Bus, Phone, MapPin } from 'lucide-react';
 import Header from '@/components/layout/NavHeader';
 import Footer from '@/components/layout/Footer';
-import ScrollToTop from '@/components/layout/ScrollToTop';
 import ChatBubble from './ChatbotPage';
 import { partnersAPI } from '@/lib/api';
 
@@ -294,7 +293,6 @@ const ExtendedBusPartnerList = () => {
 
       <Footer />
       <ChatBubble />
-      <ScrollToTop />
     </div>
   );
 };

@@ -82,12 +82,12 @@ export function Sidebar({ className }: SidebarProps) {
       doctor: [
         { path: '/appointments', icon: Calendar, label: t('appointments') },
         { path: '/patients', icon: Users, label: t('patients') },
-        { path: '/availability', icon: Clock, label: 'Lịch rảnh' },
       ],
       admin: [
         { path: '/users', icon: Users, label: 'Người dùng' },
+        { path: '/patients', icon: Users, label: t('patients') },
+        { path: '/doctors', icon: Stethoscope, label: t('doctors') },
         { path: '/appointments', icon: Calendar, label: t('appointments') },
-        { path: '/donations', icon: Gift, label: t('donations') },
         { path: '/assistance', icon: HandHeart, label: t('assistance') },
         { path: '/partners', icon: Building2, label: 'Quản lý đối tác' },
         { path: '/packages', icon: Gift, label: 'Quản lý gói khám miễn phí' },

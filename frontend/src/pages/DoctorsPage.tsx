@@ -11,8 +11,8 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/stores/authStore';
 import { doctorsAPI } from '@/lib/api';
-import ScrollToTop from '@/components/layout/ScrollToTop';
 import DoctorDetailDialog from './DoctorDetailDialog';
+import ChatBubble from './ChatbotPage';
 
 export default function DoctorsPage() {
   const { isAuthenticated, token } = useAuthStore();
@@ -26,6 +26,8 @@ export default function DoctorsPage() {
   const [openDetail, setOpenDetail] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === 'admin';
   useEffect(() => {
     const fetchDoctors = async () => {
       if (!isAuthenticated || !token) {
@@ -204,7 +206,7 @@ export default function DoctorsPage() {
         </div>
       )}
 
-      <ScrollToTop />
+      {!isAdmin && <ChatBubble />}
     </motion.div>
   );
 }

@@ -22,7 +22,6 @@ import ProfilePage from "./pages/ProfilePage";
 import AppointmentsPage from "./pages/AppointmentsPage";
 import DoctorsPage from "./pages/DoctorsPage";
 import PatientsPage from "./pages/PatientsPage";
-import DonationsPage from "./pages/DonationsPage";
 import AssistancePage from "./pages/AssistancePage";
 import NotificationsPage from "./pages/NotificationsPage";
 import ChatbotPage from "./pages/ChatbotPage";
@@ -30,7 +29,6 @@ import NotFound from "./pages/NotFound";
 import UsersPage from "./pages/UsersPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import AboutPage from "./pages/AboutPage";
-import DoctorAvailabilityPage from "./pages/DoctorAvailabilityPage";
 import PaymentConfirmPage from "./pages/payment/PaymentConfirmPage";
 import PaymentSuccess from "./pages/payment/PaymentSuccess";
 import PaymentFailed from "./pages/payment/PaymentFailed";
@@ -177,29 +175,12 @@ const App = () => {
                 }
               />
 
-              <Route
-                path="/availability"
-                element={
-                  <ProtectedRoute roles={["doctor"]}>
-                    <DoctorAvailabilityPage />
-                  </ProtectedRoute>
-                }
-              />
 
               <Route
                 path="/patients"
                 element={
                   <ProtectedRoute roles={["doctor", "admin"]}>
                     <PatientsPage />
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/donations"
-                element={
-                  <ProtectedRoute>
-                    <DonationsPage />
                   </ProtectedRoute>
                 }
               />

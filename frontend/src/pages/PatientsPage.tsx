@@ -18,7 +18,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import ScrollToTop from '@/components/layout/ScrollToTop';
 import ChatBubble from './ChatbotPage';
 import PatientProfileModal from './PatientProfileModal';
 
@@ -96,6 +95,7 @@ export default function PatientsPage() {
     condition: '',
     economicStatus: '',
   });
+  const isAdmin = user?.role === 'admin';
 
   const fetchPatients = async () => {
     try {
@@ -476,8 +476,7 @@ export default function PatientsPage() {
           onOpenChange={(open) => !open && setSelectedPatient(null)}
         />
       )}
-      <ScrollToTop />
-      {/* <ChatBubble /> */}
+      {!isAdmin && <ChatBubble />}
     </motion.div>
   );
 }

@@ -20,7 +20,6 @@ import childrenHealthImg from '@/assets/Khammatvatangkinh.jpg';
 import unthuImg from '@/assets/unthu.jpg';
 import Header from '@/components/layout/NavHeader';
 import Footer from '@/components/layout/Footer';
-import ScrollToTop from '@/components/layout/ScrollToTop';
 import ChatBubble from './ChatbotPage';
 import { useState, useEffect } from 'react';
 import DonationForm from '@/components/form/DonationForm';
@@ -1373,7 +1372,6 @@ export default function LandingPage() {
 
       <Footer />
       <ChatBubble />
-      <ScrollToTop />
       <DonationForm
         open={!!selectedAssistanceId}
         onOpenChange={(open) => !open && setSelectedAssistanceId(null)}

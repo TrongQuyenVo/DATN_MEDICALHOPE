@@ -17,6 +17,7 @@ import { Loading } from '@/components/ui/loading';
 import { authAPI } from '@/lib/api';
 import { useAuthStore } from '@/stores/authStore';
 import { useTranslation } from 'react-i18next';
+import ChatBubble from './ChatbotPage';
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -169,6 +170,7 @@ export default function LoginPage() {
           </Link>
         </div>
       </motion.div>
+      <ChatBubble />
     </div>
   );
 }

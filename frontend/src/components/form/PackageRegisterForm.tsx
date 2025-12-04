@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Loader2, Phone, User, Home, Camera, CheckCircle } from 'lucide-react';
+import ChatBubble from '@/pages/ChatbotPage';
 
 interface Props {
   pkg: { title: string; _id: string };
@@ -201,6 +202,7 @@ export default function PackageSimpleRegisterForm({ pkg, open, onOpenChange }: P
           </div>
         </div>
       </DialogContent>
+      <ChatBubble />
     </Dialog>
   );
 }

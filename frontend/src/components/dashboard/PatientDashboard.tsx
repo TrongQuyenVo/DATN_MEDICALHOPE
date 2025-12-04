@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react';
 import { appointmentsAPI, notificationsAPI } from '@/lib/api'; // <-- Đảm bảo import đúng
 import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
+import ChatBubble from '@/pages/ChatbotPage';
 
 export default function PatientDashboard() {
   const navigate = useNavigate();
@@ -253,6 +254,7 @@ export default function PatientDashboard() {
           </Card>
         </motion.div>
       </div>
+      <ChatBubble />
     </div>
   );
 }

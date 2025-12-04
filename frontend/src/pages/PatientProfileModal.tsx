@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle, Clock, UserCheck, Calendar, Phone, Mail, Home, DollarSign, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { useEffect, useState } from 'react';
+import ChatBubble from './ChatbotPage';
+import { useAuthStore } from '@/stores/authStore';
 
 interface PatientProfileModalProps {
   patient: {
@@ -81,9 +83,11 @@ const getEconomicText = (status: string) => {
 };
 
 export default function PatientProfileModal({ patient, open, onOpenChange }: PatientProfileModalProps) {
+  const { user } = useAuthStore();
   const profile = patient.userId.profile;
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarError, setAvatarError] = useState(false);
+  const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
     const url = getAvatarUrl(patient.userId.avatar);
@@ -232,6 +236,7 @@ export default function PatientProfileModal({ patient, open, onOpenChange }: Pat
           </div>
         </div>
       </DialogContent>
+      {!isAdmin && <ChatBubble />}
     </Dialog>
   );
 }
