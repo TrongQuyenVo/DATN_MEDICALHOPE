@@ -63,7 +63,6 @@ export default function AnonymousTestimonialForm({
           Gửi lời cảm ơn
         </Button>
       </div>
-      <ChatBubble />
     </div>
   );
 }

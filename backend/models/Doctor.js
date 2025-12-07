@@ -37,15 +37,10 @@ const DoctorSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    totalPatients: {
-      type: Number,
-      default: 0,
-    },
     telehealthEnabled: {
       type: Boolean,
       default: true,
     },
-    notes: String,
   },
   {
     timestamps: true,
