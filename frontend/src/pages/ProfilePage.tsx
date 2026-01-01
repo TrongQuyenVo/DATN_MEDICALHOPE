@@ -294,10 +294,12 @@ export default function ProfilePage() {
                     <p className="font-medium">{formData.profile.insurance || "—"}</p>
                   </div>
                 )}
-                <div>
-                  <p className="text-sm text-muted-foreground">Nghề nghiệp</p>
-                  <p className="font-medium">{formData.profile.occupation || "—"}</p>
-                </div>
+                {user?.role !== "doctor" && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Nghề nghiệp</p>
+                    <p className="font-medium">{formData.profile.occupation || "—"}</p>
+                  </div>
+                )}
 
                 {/* CHỈ HIỆN CHO BỆNH NHÂN */}
                 {isPatient && (
@@ -373,10 +375,12 @@ export default function ProfilePage() {
                     <Input name="insurance" value={formData.profile.insurance} onChange={handleChange} />
                   </div>
                 )}
-                <div>
-                  <label className="text-sm font-medium">Nghề nghiệp</label>
-                  <Input name="occupation" value={formData.profile.occupation} onChange={handleChange} />
-                </div>
+                {user?.role !== "doctor" && (
+                  <div>
+                    <label className="text-sm font-medium">Nghề nghiệp</label>
+                    <Input name="occupation" value={formData.profile.occupation} onChange={handleChange} />
+                  </div>
+                )}
 
                 {/* CHỈ HIỆN CHO BỆNH NHÂN */}
                 {isPatient && (

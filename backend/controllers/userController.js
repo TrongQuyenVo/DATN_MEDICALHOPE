@@ -120,28 +120,96 @@ exports.changePassword = async (req, res) => {
 // Get all users (admin only)
 exports.getAllUsers = async (req, res) => {
   try {
-    const { role, status, limit = 10, page = 1 } = req.query;
-    let query = {};
+    const { role, status, limit = 10, page = 1, q } = req.query;
+    let match = {};
 
-    if (role) query.role = role;
-    if (status) query.status = status;
+    if (role) match.role = role;
+    if (status) match.status = status;
+    if (q && q.trim()) {
+      match.$or = [
+        { fullName: { $regex: q.trim(), $options: "i" } },
+        { email: { $regex: q.trim(), $options: "i" } },
+      ];
+    }
 
-    const users = await User.find(query)
-      .select("-passwordHash")
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
+    const numericLimit = parseInt(limit) || 10;
+    const numericPage = parseInt(page) || 1;
 
-    const total = await User.countDocuments(query);
+    // compute month boundaries for "new this month"
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    // Use aggregation to fetch paged users and aggregated stats in one trip
+    const agg = await User.aggregate([
+      { $match: match },
+      {
+        $facet: {
+          users: [
+            { $sort: { createdAt: -1 } },
+            { $skip: (numericPage - 1) * numericLimit },
+            { $limit: numericLimit },
+            { $project: { passwordHash: 0 } },
+          ],
+          stats: [
+            {
+              $group: {
+                _id: null,
+                total: { $sum: 1 },
+                active: {
+                  $sum: { $cond: [{ $eq: ["$status", "active"] }, 1, 0] },
+                },
+                inactive: {
+                  $sum: { $cond: [{ $eq: ["$status", "inactive"] }, 1, 0] },
+                },
+                suspended: {
+                  $sum: { $cond: [{ $eq: ["$status", "suspended"] }, 1, 0] },
+                },
+                verified: {
+                  $sum: { $cond: [{ $eq: ["$isActive", true] }, 1, 0] },
+                },
+                newThisMonth: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $and: [
+                          { $gte: ["$createdAt", monthStart] },
+                          { $lt: ["$createdAt", monthEnd] },
+                        ],
+                      },
+                      1,
+                      0,
+                    ],
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    ]);
+
+    const users = agg[0] && agg[0].users ? agg[0].users : [];
+    const statsRaw =
+      agg[0] && agg[0].stats && agg[0].stats[0] ? agg[0].stats[0] : null;
+
+    const total = statsRaw ? statsRaw.total : await User.countDocuments(match);
 
     res.json({
       success: true,
       users,
       pagination: {
         total,
-        pages: Math.ceil(total / limit),
-        page: parseInt(page),
-        limit: parseInt(limit),
+        pages: Math.ceil(total / numericLimit),
+        page: numericPage,
+        limit: numericLimit,
+      },
+      stats: statsRaw || {
+        total,
+        active: 0,
+        verified: 0,
+        newThisMonth: 0,
+        suspended: 0,
       },
     });
   } catch (error) {

@@ -20,18 +20,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useAuthStore } from "@/stores/authStore";
-import { useState, useEffect } from "react";
-import toast from "react-hot-toast";
+import { useState, useEffect } from "react"; import { useQueryClient } from '@tanstack/react-query'; import toast from "react-hot-toast";
 import BookAppointmentForm from "@/components/form/BookAppointmentForm";
+import AppointmentDetailDialog from "@/components/appointments/AppointmentDetailDialog";
 import { appointmentsAPI } from "@/lib/api";
 import api from "@/lib/api";
 import ChatBubble from "./ChatbotPage";
 
 export default function AppointmentsPage() {
   const { user } = useAuthStore();
+  const queryClient = useQueryClient();
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<any | null>(null);
+  const [openAppointmentDetail, setOpenAppointmentDetail] = useState(false);
 
   // === Phần lịch rảnh của bác sĩ ===
   const [slots, setSlots] = useState<any[]>([]);
@@ -94,10 +97,16 @@ export default function AppointmentsPage() {
 
   const handleAddTime = (dateIdx: number) => {
     const updated = [...slots];
-    const newTime = '14:00';
-    if (updated[dateIdx].times.includes(newTime)) return;
-    updated[dateIdx].times.push(newTime);
-    updated[dateIdx].times.sort();
+    const times = updated[dateIdx].times;
+    // Find the next available hour (08:00..20:00). If all taken, show error.
+    let newTime: string | null = null;
+    for (let h = 8; h <= 20; h++) {
+      const t = `${String(h).padStart(2, '0')}:00`;
+      if (!times.includes(t)) { newTime = t; break; }
+    }
+    if (!newTime) return toast.error('Không thể thêm giờ nữa');
+    times.push(newTime);
+    times.sort();
     setSlots(updated);
   };
 
@@ -134,9 +143,12 @@ export default function AppointmentsPage() {
     }
     if (error) return;
 
-    const cleaned = slots
+    let cleaned = slots
       .map(s => ({ date: s.date, times: [...new Set(s.times)].sort(), isActive: true }))
       .filter(s => s.times.length > 0);
+
+    // Loại bỏ các ngày đã quá hạn trước khi lưu
+    cleaned = cleaned.filter(s => s.date >= today);
 
     if (cleaned.length === 0) return toast.error('Phải có ít nhất 1 ngày!');
 
@@ -174,6 +186,23 @@ export default function AppointmentsPage() {
       toast.success(user?.role === "patient" ? "Đã hủy lịch" : "Đã từ chối/hủy lịch");
     } catch {
       toast.error("Thao tác thất bại");
+    }
+  };
+
+  const handleCompleteAppointment = async (id: string, examStartTime: string, examEndTime: string) => {
+    try {
+      await appointmentsAPI.updateStatus(id, { status: 'completed', examStartTime, examEndTime });
+      setAppointments(prev => prev.map(a => a._id === id ? { ...a, status: 'completed', examStartTime, examEndTime } : a));
+      toast.success('Đã hoàn thành khám');
+      // Invalidate doctor-related queries so dashboards refresh
+      if (user?.role === 'doctor') {
+        queryClient.invalidateQueries({ queryKey: ['doctor-profile', user.id] });
+        queryClient.invalidateQueries({ queryKey: ['doctor-appointments-all', user.id] });
+      }
+      fetchAppointments();
+    } catch (err: any) {
+      console.error('Hoàn thành thất bại', err);
+      toast.error(err.response?.data?.message || 'Hoàn thành khám thất bại');
     }
   };
 
@@ -246,38 +275,44 @@ export default function AppointmentsPage() {
                   <div className="text-center py-16 text-muted-foreground">Chưa có lịch hẹn nào</div>
                 ) : (
                   <div className="space-y-4">
-                    {appointments.map((apt) => (
-                      <div key={apt._id} className="flex items-center justify-between p-5 border rounded-xl hover:bg-muted/50">
-                        <div className="flex items-center gap-5">
-                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-                            <Clock className="h-7 w-7 text-white" />
+                    {appointments.map((apt) => {
+                      const isPastDue = new Date(apt.scheduledTime).getTime() < Date.now() && ['scheduled', 'pending'].includes(apt.status);
+                      return (
+                        <div key={apt._id} className="flex items-center justify-between p-5 border rounded-xl hover:bg-muted/50 cursor-pointer" onClick={() => { setSelectedAppointment(apt); setOpenAppointmentDetail(true); }}>
+                          <div className="flex items-center gap-5">
+                            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                              <Clock className="h-7 w-7 text-white" />
+                            </div>
+                            <div>
+                              <div className="font-semibold text-lg flex items-center gap-2">
+                                <User className="h-5 w-5" />
+                                {apt.patientId?.userId?.fullName || "Không rõ"}
+                              </div>
+                              {renderAppointmentType(apt.appointmentType)}
+                              <div className="text-sm text-muted-foreground">
+                                {new Date(apt.scheduledTime).toLocaleString('vi-VN')}
+                              </div>
+                              {isPastDue && (
+                                <div className="text-sm text-red-600 font-medium mt-1">Lịch hẹn đã quá ngày</div>
+                              )}
+                            </div>
                           </div>
-                          <div>
-                            <div className="font-semibold text-lg flex items-center gap-2">
-                              <User className="h-5 w-5" />
-                              {apt.patientId?.userId?.fullName || "Không rõ"}
-                            </div>
-                            {renderAppointmentType(apt.appointmentType)}
-                            <div className="text-sm text-muted-foreground">
-                              {new Date(apt.scheduledTime).toLocaleString('vi-VN')}
-                            </div>
+                          <div className="flex items-center gap-3">
+                            {renderStatusBadge(apt.status)}
+                            {apt.status === "scheduled" && !isPastDue && (
+                              <div className="flex gap-2">
+                                <Button size="sm" onClick={(e) => { e.stopPropagation(); handleConfirmAppointment(apt._id); }}>
+                                  <CheckCircle className="h-4 w-4 mr-1" /> Xác nhận
+                                </Button>
+                                <Button size="sm" variant="destructive" onClick={(e) => { e.stopPropagation(); handleRejectOrCancel(apt._id); }}>
+                                  <XCircle className="h-4 w-4 mr-1" /> Từ chối
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          {renderStatusBadge(apt.status)}
-                          {apt.status === "scheduled" && (
-                            <div className="flex gap-2">
-                              <Button size="sm" onClick={() => handleConfirmAppointment(apt._id)}>
-                                <CheckCircle className="h-4 w-4 mr-1" /> Xác nhận
-                              </Button>
-                              <Button size="sm" variant="destructive" onClick={() => handleRejectOrCancel(apt._id)}>
-                                <XCircle className="h-4 w-4 mr-1" /> Từ chối
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>
@@ -288,44 +323,53 @@ export default function AppointmentsPage() {
           <TabsContent value="availability" className="mt-6">
             {!isEditing ? (
               <Card>
-                <CardHeader className="bg-gradient-to-br from-emerald-600 to-emerald-700 text-white rounded-t-lg">
-                  <CardTitle className="text-2xl">Lịch rảnh khám tình nguyện</CardTitle>
-                  <p className="text-emerald-100">Bạn đã mở {slots.length} ngày khám miễn phí</p>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  {slots.length === 0 ? (
-                    <div className="text-center py-16">
-                      <Calendar className="h-16 w-16 mx-auto mb-4 text-muted" />
-                      <p className="text-lg mb-6">Chưa mở lịch khám tình nguyện</p>
-                      <Button onClick={() => setIsEditing(true)} size="lg">
-                        <PlusCircle className="mr-2" /> Mở lịch ngay
-                      </Button>
-                    </div>
-                  ) : (
+                {/* Chỉ hiển thị các ngày chưa quá hạn */}
+                {/** Tính toán các slot còn hợp lệ */}
+                {(() => {
+                  const visibleSlots = slots.filter(s => s.date >= today);
+                  return (
                     <>
-                      <div className="space-y-4 mb-8">
-                        {slots.map((slot, i) => (
-                          <div key={i} className="border rounded-xl p-5 hover:shadow-md">
-                            <div className="flex justify-between items-start mb-3">
-                              <h3 className="font-semibold text-lg">
-                                {new Date(slot.date).toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}
-                              </h3>
-                              <Badge>{slot.times.length} khung giờ</Badge>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              {slot.times.map((t: string, j: number) => (
-                                <Badge key={j} variant="outline" className="font-mono">{t}</Badge>
+                      <CardHeader className="bg-gradient-to-br from-emerald-600 to-emerald-700 text-white rounded-t-lg">
+                        <CardTitle className="text-2xl">Lịch rảnh khám tình nguyện</CardTitle>
+                        <p className="text-emerald-100">Bạn đã mở {visibleSlots.length} ngày khám miễn phí</p>
+                      </CardHeader>
+                      <CardContent className="pt-6">
+                        {visibleSlots.length === 0 ? (
+                          <div className="text-center py-16">
+                            <Calendar className="h-16 w-16 mx-auto mb-4 text-muted" />
+                            <p className="text-lg mb-6">Chưa mở lịch khám tình nguyện</p>
+                            <Button onClick={() => setIsEditing(true)} size="lg">
+                              <PlusCircle className="mr-2" /> Mở lịch ngay
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="space-y-4 mb-8">
+                              {visibleSlots.map((slot, i) => (
+                                <div key={i} className="border rounded-xl p-5 hover:shadow-md">
+                                  <div className="flex justify-between items-start mb-3">
+                                    <h3 className="font-semibold text-lg">
+                                      {new Date(slot.date).toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}
+                                    </h3>
+                                    <Badge>{slot.times.length} khung giờ</Badge>
+                                  </div>
+                                  <div className="flex flex-wrap gap-2">
+                                    {slot.times.map((t: string, j: number) => (
+                                      <Badge key={j} variant="outline" className="font-mono">{t}</Badge>
+                                    ))}
+                                  </div>
+                                </div>
                               ))}
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                      <Button className="w-full" size="lg" onClick={() => setIsEditing(true)}>
-                        <Calendar className="mr-2" /> Chỉnh sửa lịch rảnh
-                      </Button>
+                            <Button className="w-full" size="lg" onClick={() => setIsEditing(true)}>
+                              <Calendar className="mr-2" /> Chỉnh sửa lịch rảnh
+                            </Button>
+                          </>
+                        )}
+                      </CardContent>
                     </>
-                  )}
-                </CardContent>
+                  );
+                })()}
               </Card>
             ) : (
               /* Chế độ chỉnh sửa */
@@ -390,37 +434,52 @@ export default function AppointmentsPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {appointments.map((apt) => (
-                  <div key={apt._id} className="flex items-center justify-between p-5 border rounded-xl hover:bg-muted/50">
-                    <div className="flex items-center gap-5">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-                        <Clock className="h-7 w-7 text-white" />
+                {appointments.map((apt) => {
+                  const isPastDue = new Date(apt.scheduledTime).getTime() < Date.now() && ['scheduled', 'pending'].includes(apt.status);
+                  return (
+                    <div key={apt._id} className="flex items-center justify-between p-5 border rounded-xl hover:bg-muted/50 cursor-pointer" onClick={() => { setSelectedAppointment(apt); setOpenAppointmentDetail(true); }}>
+                      <div className="flex items-center gap-5">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                          <Clock className="h-7 w-7 text-white" />
+                        </div>
+                        <div>
+                          <div className="font-semibold text-lg">
+                            BS. {apt.doctorId?.userId?.fullName || "Chưa phân công"}
+                          </div>
+                          {renderAppointmentType(apt.appointmentType)}
+                          <div className="text-sm text-muted-foreground">
+                            {new Date(apt.scheduledTime).toLocaleString('vi-VN')}
+                          </div>
+                          {isPastDue && (
+                            <div className="text-sm text-red-600 font-medium mt-1">Lịch hẹn đã quá ngày</div>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <div className="font-semibold text-lg">
-                          BS. {apt.doctorId?.userId?.fullName || "Chưa phân công"}
-                        </div>
-                        {renderAppointmentType(apt.appointmentType)}
-                        <div className="text-sm text-muted-foreground">
-                          {new Date(apt.scheduledTime).toLocaleString('vi-VN')}
-                        </div>
+                      <div className="flex items-center gap-3">
+                        {renderStatusBadge(apt.status)}
+                        {apt.status === "scheduled" && !isPastDue && (
+                          <Button size="sm" variant="destructive" onClick={(e) => { e.stopPropagation(); handleRejectOrCancel(apt._id); }}>
+                            <XCircle className="h-4 w-4 mr-1" /> Hủy lịch
+                          </Button>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      {renderStatusBadge(apt.status)}
-                      {apt.status === "scheduled" && (
-                        <Button size="sm" variant="destructive" onClick={() => handleRejectOrCancel(apt._id)}>
-                          <XCircle className="h-4 w-4 mr-1" /> Hủy lịch
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>
         </Card>
       )}
+
+      <AppointmentDetailDialog
+        appointment={selectedAppointment}
+        open={openAppointmentDetail}
+        onOpenChange={setOpenAppointmentDetail}
+        onConfirm={async (id: string) => { await handleConfirmAppointment(id); fetchAppointments(); }}
+        onCancel={async (id: string) => { await handleRejectOrCancel(id); fetchAppointments(); }}
+        onComplete={async (id: string, start: string, end: string) => { await handleCompleteAppointment(id, start, end); fetchAppointments(); }}
+      />
 
       {!isAdmin && <ChatBubble />}
       {openDialog && user.role === "patient" && (

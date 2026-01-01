@@ -29,6 +29,8 @@ interface FormData {
   urgency: string;
   contactPhone: string;
   medicalCondition: string;
+  supportStartDate: string;
+  supportEndDate: string;
 }
 
 const schema = yup.object({
@@ -39,6 +41,10 @@ const schema = yup.object({
   urgency: yup.string().required('Vui lòng chọn mức độ khẩn cấp'),
   contactPhone: yup.string().required('Vui lòng nhập số điện thoại liên hệ'),
   medicalCondition: yup.string().required('Vui lòng mô tả tình trạng bệnh lý'),
+  supportStartDate: yup.date().required('Vui lòng chọn ngày bắt đầu'),
+  supportEndDate: yup.date()
+    .required('Vui lòng chọn ngày kết thúc')
+    .min(yup.ref('supportStartDate'), 'Ngày kết thúc phải sau ngày bắt đầu'),
 });
 
 export default function AssistanceRequestForm({ open, onOpenChange }: AssistanceRequestFormProps) {
@@ -117,6 +123,8 @@ export default function AssistanceRequestForm({ open, onOpenChange }: Assistance
       formData.append('urgency', data.urgency);
       formData.append('contactPhone', data.contactPhone);
       formData.append('medicalCondition', data.medicalCondition);
+      formData.append('supportStartDate', data.supportStartDate);
+      formData.append('supportEndDate', data.supportEndDate);
 
       // 📎 THÊM FILES
       attachments.forEach(file => {
@@ -246,6 +254,31 @@ export default function AssistanceRequestForm({ open, onOpenChange }: Assistance
             {errors.urgency && (
               <p className="text-sm text-destructive">{errors.urgency.message}</p>
             )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="supportStartDate">Ngày bắt đầu nhận hỗ trợ *</Label>
+              <Input
+                id="supportStartDate"
+                type="date"
+                {...register('supportStartDate')}
+              />
+              {errors.supportStartDate && (
+                <p className="text-sm text-destructive">{errors.supportStartDate.message}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="supportEndDate">Ngày kết thúc nhận hỗ trợ *</Label>
+              <Input
+                id="supportEndDate"
+                type="date"
+                {...register('supportEndDate')}
+              />
+              {errors.supportEndDate && (
+                <p className="text-sm text-destructive">{errors.supportEndDate.message}</p>
+              )}
+            </div>
           </div>
 
           {/* Contact Phone */}

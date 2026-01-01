@@ -65,6 +65,17 @@ const App = () => {
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
 
+  // Initialize socket after auth
+  useEffect(() => {
+    if (!user || !user.id) return;
+    // Lazy import to avoid SSR issues
+    import("@/lib/socket").then(({ initSocket }) => {
+      const s = initSocket(user.id);
+      // ensure server knows this user socket
+      s.emit("join", user.id);
+    });
+  }, [user?.id]);
+
   // Protected Route Component
   const ProtectedRoute = ({
     children,

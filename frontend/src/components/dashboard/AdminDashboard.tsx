@@ -23,6 +23,7 @@ interface DashboardData {
     completionRate: number;
   };
   userDistribution: Array<{ role: string; count: number }>;
+  monthlyDonations?: Array<{ month: string; donations: number }>;
   previousMetrics?: {
     totalUsers: number;
     doctors: number;
@@ -139,9 +140,13 @@ export default function AdminDashboard() {
     { type: 'Xác minh bệnh nhân', count: pendingData?.patient || 0, action: () => navigate('/patients') },
   ];
 
+  // Quyên góp: tổng hệ thống
+  const totalDonations = dashboardData.keyMetrics.totalDonations;
+  const donationChange = calculateChange(totalDonations, prev.donations || 0);
+
   const monthlyTargets = {
     donations: {
-      current: dashboardData.keyMetrics.totalDonations,
+      current: totalDonations,
       target: 200_000_000, // Cứng tạm, hoặc sau này backend trả thêm field target
     },
     newPatients: {
@@ -178,9 +183,9 @@ export default function AdminDashboard() {
       color: 'text-secondary',
     },
     {
-      title: 'Quyên góp tháng này',
-      value: `${formatVND(dashboardData.keyMetrics.totalDonations)}`,
-      change: calculateChange(dashboardData.keyMetrics.totalDonations, prev.donations || 0),
+      title: 'Tổng quyên góp',
+      value: `${formatVND(totalDonations)}`,
+      change: donationChange,
       icon: Gift,
       color: 'text-success',
     },
@@ -215,7 +220,7 @@ export default function AdminDashboard() {
                   <span className={stat.change.startsWith('+') ? 'text-success' : 'text-destructive'}>
                     {stat.change}
                   </span>{' '}
-                  từ tháng trước
+                  so với kỳ trước
                 </p>
               </CardContent>
             </Card>
@@ -275,15 +280,15 @@ export default function AdminDashboard() {
                 <div className="flex justify-between items-center text-sm">
                   <span className="font-semibold">Quyên góp</span>
                   <span className="font-medium text-muted-foreground">
-                    {dashboardData.keyMetrics.totalDonations.toLocaleString('vi-VN')} VNĐ / 200.000.000 VNĐ
+                    {totalDonations.toLocaleString('vi-VN')} VNĐ / 200.000.000 VNĐ
                   </span>
                 </div>
                 <Progress
-                  value={(dashboardData.keyMetrics.totalDonations / 200_000_000) * 100}
+                  value={(totalDonations / 200_000_000) * 100}
                   className="h-3"
                 />
                 <div className="text-xs text-success font-medium">
-                  {((dashboardData.keyMetrics.totalDonations / 200_000_000) * 100).toFixed(1)}% hoàn thành
+                  {((totalDonations / 200_000_000) * 100).toFixed(1)}% hoàn thành
                 </div>
               </div>
 

@@ -3,7 +3,8 @@ const Patient = require("../models/Patient");
 // Create patient profile (after user registers as patient)
 exports.createPatientProfile = async (req, res) => {
   try {
-    const { economicStatus, medicalHistory, currentCondition, supportNeeded } = req.body;
+    const { economicStatus, medicalHistory, currentCondition, supportNeeded } =
+      req.body;
 
     // Kiểm tra xem đã tồn tại profile chưa
     const existingPatient = await Patient.findOne({ userId: req.user._id });
@@ -106,9 +107,13 @@ exports.getAllPatients = async (req, res) => {
       economicStatus,
       createdAfter,
       createdBefore,
+      _id,
     } = req.query;
 
     let query = {};
+
+    // Allow filtering by exact _id when requested (used by AppointmentDetailDialog)
+    if (_id) query._id = _id;
 
     if (verified !== undefined) query.isVerified = verified === "true";
     if (economicStatus) query.economicStatus = economicStatus;

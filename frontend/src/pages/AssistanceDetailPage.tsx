@@ -18,6 +18,8 @@ import { assistanceAPI } from '@/lib/api';
 import DonationForm from '@/components/form/DonationForm';
 import toast from 'react-hot-toast';
 import ChatBubble from './ChatbotPage';
+import NavHeader from '@/components/layout/NavHeader';
+import Footer from '@/components/layout/Footer';
 
 interface AssistanceRequest {
   _id: string;
@@ -34,6 +36,8 @@ interface AssistanceRequest {
   title: string;
   description: string;
   medicalCondition: string;
+  supportStartDate: string;
+  supportEndDate: string;
   requestedAmount: number;
   raisedAmount: number;
   urgency: string;
@@ -59,12 +63,6 @@ export default function AssistanceDetailPage() {
   const currentPatientId = (user as any)?.patientId?._id || user?.id;
 
   useEffect(() => {
-    if (!user) {
-      toast.error('Vui lòng đăng nhập');
-      navigate('/login');
-      return;
-    }
-
     const fetch = async () => {
       if (!id) return;
       try {
@@ -72,16 +70,20 @@ export default function AssistanceDetailPage() {
         const { data } = await assistanceAPI.getById(id);
         const req = data.data;
 
-        // === KIỂM TRA QUYỀN TRUY CẬP ===
-        const isAdmin = ['admin', 'patient'].includes(user.role);
-        const isOwner = String(req.patientId._id) === String(currentPatientId);
+        // Chỉ kiểm tra quyền nếu đã đăng nhập
+        if (user) {
+          // Only true admin users should have admin privileges here
+          const isAdmin = user.role === 'admin';
+          const isOwner = String(req.patientId._id) === String(currentPatientId);
 
-        if (!isAdmin && !isOwner) {
-          toast.error('Bạn không có quyền xem chi tiết yêu cầu này');
-          navigate('/assistance');
-          return;
+          if (!isAdmin && !isOwner && req.status === 'rejected') {
+            toast.error('Bạn không có quyền xem chi tiết yêu cầu này');
+            navigate('/assistance');
+            return;
+          }
         }
 
+        // Chưa đăng nhập vẫn xem được
         setAssistance(req);
       } catch (err: any) {
         toast.error(err.response?.data?.message || 'Không tải được chi tiết yêu cầu');
@@ -93,6 +95,7 @@ export default function AssistanceDetailPage() {
 
     fetch();
   }, [id, user, navigate, currentPatientId]);
+
 
   // Xử lý duyệt/từ chối (chỉ admin)
   const handleApprove = async () => {
@@ -140,7 +143,7 @@ export default function AssistanceDetailPage() {
     ? (assistance.raisedAmount / assistance.requestedAmount) * 100
     : 0;
 
-  const isAdmin = ['admin', 'patient'].includes(user!.role);
+  const isAdmin = !!user && user.role === 'admin';
   const isOwner = String(assistance.patientId._id) === String(currentPatientId);
   const canDonate = assistance.status === 'approved';
   const canViewFullInfo = isAdmin || isOwner; // Chỉ chủ hoặc admin thấy thông tin thật
@@ -172,10 +175,11 @@ export default function AssistanceDetailPage() {
     critical: { label: 'Rất khẩn cấp', bg: 'bg-red-100', text: 'text-red-700' },
   };
   const urgencyConfig = urgencyConfigMap[assistance.urgency] || urgencyConfigMap.low;
-
+  const isGuest = !user;
   return (
     <>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen bg-gradient-to-b from-background to-muted/30">
+        {isGuest && <NavHeader />}
         <div className="container mx-auto px-4 py-16 max-w-6xl">
           <Button variant="ghost" onClick={() => navigate('/assistance')} className="mb-6">
             <ArrowLeft className="mr-2 h-5 w-5" /> Quay lại danh sách
@@ -233,8 +237,25 @@ export default function AssistanceDetailPage() {
                       <div className="flex justify-between"><span>Đã nhận</span> <strong className="text-green-600">{formatVND(assistance.raisedAmount)}</strong></div>
                       <div className="flex justify-between"><span>Còn thiếu</span> <strong className="text-red-600">{formatVND(assistance.requestedAmount - assistance.raisedAmount)}</strong></div>
                     </div>
-                    <Progress value={progress} className="h-5" />
-                    <p className="text-center text-xl font-bold">{progress.toFixed(1)}% hoàn thành</p>
+                    <div className="text-center text-lg mb-4">
+                      <p className="text-muted-foreground">Thời gian nhận hỗ trợ:</p>
+                      <p className="font-bold">
+                        {new Date(assistance.supportStartDate).toLocaleDateString('vi-VN')} →{' '}
+                        {new Date(assistance.supportEndDate).toLocaleDateString('vi-VN')}
+                      </p>
+                    </div>
+                    {assistance.raisedAmount >= assistance.requestedAmount ? (
+                      <div className="text-center py-8 bg-emerald-50 rounded-xl border-2 border-emerald-300">
+                        <CheckCircle2 className="h-16 w-16 text-emerald-600 mx-auto mb-4" />
+                        <p className="text-2xl font-bold text-emerald-700">ĐÃ NHẬN ĐỦ HỖ TRỢ!</p>
+                        <p className="text-emerald-600 mt-2">Cảm ơn cộng đồng đã chung tay giúp đỡ</p>
+                      </div>
+                    ) : (
+                      <>
+                        <Progress value={progress} className="h-5" />
+                        <p className="text-center text-xl font-bold">{progress.toFixed(1)}% hoàn thành</p>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               )}
@@ -304,10 +325,17 @@ export default function AssistanceDetailPage() {
                   )}
 
                   {/* Chỉ hiện nút ủng hộ nếu đã duyệt */}
-                  {canDonate && (
+                  {canDonate && assistance.raisedAmount < assistance.requestedAmount && (
                     <Button onClick={() => setShowDonationForm(true)} size="lg" className="w-full bg-red-600 hover:bg-red-700">
                       <Heart className="mr-2" /> Ủng hộ ngay
                     </Button>
+                  )}
+                  {canDonate && assistance.raisedAmount >= assistance.requestedAmount && (
+                    <div className="text-center py-6">
+                      <Badge className="text-lg px-6 py-3 bg-emerald-100 text-emerald-800">
+                        <CheckCircle2 className="mr-2" /> Đã nhận đủ hỗ trợ
+                      </Badge>
+                    </div>
                   )}
 
                   {assistance.status === 'completed' && (
@@ -331,6 +359,8 @@ export default function AssistanceDetailPage() {
         />
       )}
       {!isAdmin && <ChatBubble />}
+      {isGuest && <Footer />}
+
     </>
   );
 }

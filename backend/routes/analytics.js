@@ -133,14 +133,16 @@ router.get("/admin-dashboard", auth, authorize("admin"), async (req, res) => {
       { $sort: { appointments: -1 } },
       { $limit: 4 },
       {
+        // doctorId is the Doctor._id, so match against _id field on doctors
         $lookup: {
           from: "doctors",
           localField: "_id",
-          foreignField: "userId",
+          foreignField: "_id",
           as: "doctorInfo",
         },
       },
       {
+        // populate user info based on doctorInfo.userId
         $lookup: {
           from: "users",
           localField: "doctorInfo.userId",
@@ -150,8 +152,18 @@ router.get("/admin-dashboard", auth, authorize("admin"), async (req, res) => {
       },
       {
         $project: {
-          name: { $arrayElemAt: ["$userInfo.fullName", 0] },
-          specialty: { $arrayElemAt: ["$doctorInfo.specialty", 0] },
+          name: {
+            $ifNull: [
+              { $arrayElemAt: ["$userInfo.fullName", 0] },
+              "Bác sĩ không rõ",
+            ],
+          },
+          specialty: {
+            $ifNull: [
+              { $arrayElemAt: ["$doctorInfo.specialty", 0] },
+              "Không xác định",
+            ],
+          },
           appointments: 1,
           rating: {
             $ifNull: [{ $arrayElemAt: ["$doctorInfo.rating", 0] }, 4.5],
@@ -297,16 +309,20 @@ router.get("/recent-activities", auth, authorize("admin"), async (req, res) => {
       .limit(5)
       .populate("userId", "fullName")
       .populate("assistanceId", "title")
-      .select("amount userId assistanceId createdAt _id");
+      .select("amount userId assistanceId donorName isAnonymous createdAt _id");
 
     recentDonations.forEach((d) => {
       let donorName;
 
-      if (!d.userId) {
-        donorName = d.isAnonymous ? "Người ẩn danh" : "Người ẩn danh";
-      } else {
-        // Trường hợp có userId (người dùng đã đăng nhập)
+      // Prefer explicit anonymity flag, otherwise use registered user name or provided donorName
+      if (d.isAnonymous) {
+        donorName = "Người ẩn danh";
+      } else if (d.userId) {
         donorName = d.userId?.fullName || "Người dùng đã xóa";
+      } else if (d.donorName) {
+        donorName = d.donorName;
+      } else {
+        donorName = "Người dùng";
       }
 
       const assistTitle = d.assistanceId?.title
@@ -324,20 +340,67 @@ router.get("/recent-activities", auth, authorize("admin"), async (req, res) => {
       });
     });
 
-    // 3. Yêu cầu hỗ trợ mới (giữ nguyên)
+    // 3. Yêu cầu hỗ trợ mới (sửa: populate patient để lấy tên người liên hệ)
     const recentAssistance = await PatientAssistance.find({ status: "pending" })
       .sort({ createdAt: -1 })
       .limit(2)
-      .select("patientName createdAt _id");
-    recentAssistance.forEach((a) =>
+      .populate({
+        path: "patientId",
+        populate: { path: "userId", select: "fullName" },
+      })
+      .select("patientId title createdAt _id");
+
+    recentAssistance.forEach((a) => {
+      const patientName =
+        a.patientId?.userId?.fullName || "Người nhận không rõ";
+      const titlePart = a.title ? `: "${a.title}"` : "";
       activities.push({
         id: `assist-${a._id}`,
-        message: `Yêu cầu hỗ trợ mới từ ${a.patientName}`,
+        message: `Yêu cầu hỗ trợ mới${titlePart} từ ${patientName}`,
         time: formatRelativeTime(a.createdAt),
         timestamp: a.createdAt,
         status: "warning",
-      })
-    );
+      });
+    });
+
+    // 4. Rút tiền từ yêu cầu hỗ trợ (admin)
+    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const recentWithdrawals = await PatientAssistance.aggregate([
+      { $unwind: "$withdrawals" },
+      { $match: { "withdrawals.createdAt": { $gte: oneWeekAgo } } },
+      { $sort: { "withdrawals.createdAt": -1 } },
+      { $limit: 5 },
+      {
+        $lookup: {
+          from: "users",
+          localField: "withdrawals.adminId",
+          foreignField: "_id",
+          as: "adminInfo",
+        },
+      },
+      {
+        $project: {
+          assistanceTitle: "$title",
+          amount: "$withdrawals.amount",
+          createdAt: "$withdrawals.createdAt",
+          adminName: { $arrayElemAt: ["$adminInfo.fullName", 0] },
+        },
+      },
+    ]);
+
+    recentWithdrawals.forEach((w) => {
+      activities.push({
+        id: `withdraw-${w.assistanceTitle}-${w.createdAt}`,
+        message: `${
+          w.adminName || "Quản trị viên"
+        } đã rút ${w.amount.toLocaleString("vi-VN")} VNĐ cho yêu cầu "${
+          w.assistanceTitle
+        }"`,
+        time: formatRelativeTime(w.createdAt),
+        timestamp: w.createdAt,
+        status: "info",
+      });
+    });
 
     // Sắp xếp theo thời gian
     activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));

@@ -232,18 +232,18 @@ export default function PatientDashboard() {
               {loading ? (
                 <p className="text-center py-8 text-muted-foreground">Đang tải...</p>
               ) : notifications.length > 0 ? (
-                notifications.slice(0, 5).map((notif) => (
-                  <div key={notif._id} className="flex items-start space-x-3 border rounded-lg p-4">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{notif.title}</p>
-                      <p className="text-sm text-muted-foreground">{notif.message}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {new Date(notif.createdAt).toLocaleString('vi-VN')}
-                      </p>
+                <div className="max-h-80 overflow-y-auto space-y-3" aria-label="Danh sách thông báo">
+                  {notifications.map((notif) => (
+                    <div key={notif._id} className="flex items-start space-x-3 border rounded-lg p-4">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{notif.title}</p>
+                        <p className="text-sm text-muted-foreground">{notif.message}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{new Date(notif.createdAt).toLocaleString('vi-VN')}</p>
+                      </div>
+                      {!notif.read && <div className="h-2 w-2 bg-blue-500 rounded-full mt-2"></div>}
                     </div>
-                    {!notif.read && <div className="h-2 w-2 bg-blue-500 rounded-full mt-2"></div>}
-                  </div>
-                ))
+                  ))}
+                </div>
               ) : (
                 <p className="text-center py-8 text-muted-foreground">Không có thông báo</p>
               )}

@@ -22,6 +22,11 @@ const AppointmentSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
+    // Optional: record when the actual clinical exam started/ended
+    examStartTime: Date,
+    examEndTime: Date,
+    // Has the exam duration already been counted toward doctor's volunteer hours?
+    hoursAdded: { type: Boolean, default: false },
     status: {
       type: String,
       enum: [

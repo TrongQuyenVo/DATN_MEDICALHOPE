@@ -36,7 +36,7 @@ const schema = yup.object({
   patientNotes: yup.string().optional(),
 });
 
-export default function BookAppointmentForm({ open, onOpenChange, doctor, onSuccess }) {
+export default function BookAppointmentForm({ open, onOpenChange, doctor, onSuccess, showChatbot = true }: any) {
   const { user, isAuthenticated, token } = useAuthStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [availableSlots, setAvailableSlots] = useState([]);
@@ -314,7 +314,7 @@ export default function BookAppointmentForm({ open, onOpenChange, doctor, onSucc
           </div>
         </form>
       </DialogContent>
-      <ChatBubble />
+      {showChatbot && <ChatBubble />}
     </Dialog>
   );
 }

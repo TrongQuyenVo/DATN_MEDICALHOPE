@@ -86,7 +86,8 @@ export default function AnalyticsPage() {
           },
           keyMetrics: {
             totalUsers: apiData.keyMetrics.totalUsers,
-            totalDonations,
+            // Quyên góp của THÁNG HIỆN TẠI
+            currentMonthDonations: currentDonations,
             appointmentsThisMonth,
             completionRate,
           },
@@ -148,14 +149,14 @@ export default function AnalyticsPage() {
 
         <Card className="healthcare-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tổng quyên góp</CardTitle>
+            <CardTitle className="text-sm font-medium">Quyên góp tháng này</CardTitle>
             <DollarSign className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-success">
-              {data.keyMetrics.totalDonations.toLocaleString('vi-VN')} VNĐ
+              {data.keyMetrics.currentMonthDonations.toLocaleString('vi-VN')} VNĐ
             </div>
-            {/* 2. Tổng quyên góp */}
+            {/* 2. Quyên góp tháng này (so sánh với tháng trước) */}
             <div className="flex items-center text-xs mt-1">
               {data.growth.donations >= 0 ? (
                 <TrendingUp className="mr-1 h-3 w-3 text-success" />

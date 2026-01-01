@@ -1,5 +1,5 @@
 // models/PatientAssistance.js
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const PatientAssistanceSchema = new mongoose.Schema(
   {
@@ -48,6 +48,14 @@ const PatientAssistanceSchema = new mongoose.Schema(
       enum: ["low", "medium", "high", "critical"],
       required: true,
     },
+    supportStartDate: {
+      type: Date,
+      required: true,
+    },
+    supportEndDate: {
+      type: Date,
+      required: true,
+    },
     contactPhone: {
       // 🆕 THÊM
       type: String,
@@ -63,6 +71,16 @@ const PatientAssistanceSchema = new mongoose.Schema(
         return this.requestedAmount;
       },
     },
+    // Track withdrawals done by admins to pay the patient
+    withdrawals: [
+      {
+        amount: { type: Number, required: true },
+        adminId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        note: String,
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+    withdrawnAmount: { type: Number, default: 0 },
     attachments: [
       {
         // 🆕 THÊM CHO FILES

@@ -26,6 +26,8 @@ exports.createAssistanceRequest = async (req, res) => {
       urgency: req.body.urgency, // THÊM URGENCY
       contactPhone: req.body.contactPhone, // THÊM PHONE
       medicalCondition: req.body.medicalCondition, // THÊM CONDITION
+      supportStartDate: new Date(req.body.supportStartDate),
+      supportEndDate: new Date(req.body.supportEndDate),
       attachments: req.files
         ? req.files.map((file) => ({
             filename: file.originalname, // ← ĐÚNG tên trường
@@ -167,7 +169,7 @@ exports.getAssistanceById = async (req, res) => {
         },
       })
       .populate("approvedBy", "fullName");
-      console.log("Assistance details:", assistance);
+    console.log("Assistance details:", assistance);
     if (!assistance) {
       return res.status(404).json({
         success: false,
@@ -226,6 +228,97 @@ exports.updateAssistanceStatus = async (req, res) => {
       success: false,
       message: "Server error",
     });
+  }
+};
+
+exports.withdrawFunds = async (req, res) => {
+  try {
+    const { amount, note } = req.body;
+    const adminId = req.user._id;
+    const assistance = await PatientAssistance.findById(req.params.id).populate(
+      {
+        path: "patientId",
+        populate: { path: "userId", select: "fullName" },
+      }
+    );
+
+    if (!assistance) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Yêu cầu không tồn tại" });
+    }
+
+    const availableToWithdraw =
+      (assistance.raisedAmount || 0) - (assistance.withdrawnAmount || 0);
+    const withdrawAmount = Number(amount) || 0;
+
+    if (withdrawAmount <= 0) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Số tiền rút không hợp lệ" });
+    }
+
+    if (withdrawAmount > availableToWithdraw) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Số tiền rút vượt quá số tiền hiện có",
+        });
+    }
+
+    // Push withdrawal record
+    assistance.withdrawals = assistance.withdrawals || [];
+    assistance.withdrawals.push({ amount: withdrawAmount, adminId, note });
+    assistance.withdrawnAmount =
+      (assistance.withdrawnAmount || 0) + withdrawAmount;
+    await assistance.save();
+
+    // Log activity by emitting to admin channel (and persist via Notification to patient)
+    const Notification = require("../models/Notification");
+    const adminUser = req.user.fullName || "Quản trị viên";
+
+    const message = `${adminUser} đã rút ${withdrawAmount.toLocaleString(
+      "vi-VN"
+    )} VNĐ cho yêu cầu "${assistance.title}"`;
+
+    // Create notification for patient owner
+    const patientUserId = assistance.patientId?.userId?._id;
+    if (patientUserId) {
+      await Notification.create({
+        userId: patientUserId,
+        type: "system",
+        title: "Rút tiền hỗ trợ",
+        message,
+      });
+
+      // emit socket to patient
+      const io = req.app.get("io");
+      try {
+        io.to(patientUserId.toString()).emit("notification", {
+          title: "Rút tiền hỗ trợ",
+          message,
+          assistanceId: assistance._id,
+        });
+        // also broadcast an activity so admins see it in realtime
+        io.emit("activity", {
+          message,
+          time: new Date().toISOString(),
+          id: `withdraw-${assistance._id}-${Date.now()}`,
+        });
+      } catch (e) {
+        console.warn("Socket emit failed for withdrawal", e);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: "Rút tiền thành công",
+      data: assistance,
+    });
+  } catch (error) {
+    console.error("Withdraw funds error:", error);
+    res.status(500).json({ success: false, message: "Lỗi server" });
   }
 };
 

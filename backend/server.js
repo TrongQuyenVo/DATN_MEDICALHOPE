@@ -51,18 +51,29 @@ app.use(
 );
 app.use(morgan("dev"));
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
+// If the app runs behind a proxy/load-balancer (nginx, cloud provider),
+// enable trust proxy so rate limiter and other middleware read real client IPs.
+app.set("trust proxy", 1);
+
+// Serve uploads without the strict API rate-limiter applied so assets aren't accidentally blocked.
+app.use("/uploads", express.static("uploads"));
+
+// Apply stricter rate-limiting only to API routes
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per window
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  message: {
+    success: false,
+    message: "Too many requests from this IP, please try again later.",
+  },
 });
-app.use(limiter);
+app.use("/api/", apiLimiter);
 
 // Body parsing
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
-
-// Static files
-app.use("/uploads", express.static("uploads"));
 
 // Database
 mongoose.connect(

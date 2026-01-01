@@ -3,6 +3,11 @@ const crypto = require("crypto");
 const Donation = require("../models/Donation");
 const PatientAssistance = require("../models/PatientAssistance");
 const { createOrder } = require("../utils/paypal");
+const {
+  createNotification,
+  notificationTypes,
+} = require("../utils/notifications");
+const { sendEmail, emailTemplates } = require("../utils/email");
 
 // Constants for VNPAY (move to config/env in production)
 const VNPAY_CONFIG = {
@@ -154,7 +159,6 @@ const calculateSecureHash = (input, secret) => {
 //   }
 // };
 
-
 exports.createDonation = async (req, res) => {
   try {
     const {
@@ -278,6 +282,97 @@ exports.handleVnpayReturn = async (req, res) => {
   }
 };
 
+// Confirm donation by txnRef (idempotent) — useful for frontend redirects
+exports.confirmSuccess = async (req, res) => {
+  try {
+    const { txnRef } = req.params;
+    if (!txnRef)
+      return res
+        .status(400)
+        .json({ success: false, message: "Missing txnRef" });
+
+    const donation = await Donation.findOne({ txnRef });
+    if (!donation)
+      return res
+        .status(404)
+        .json({ success: false, message: "Donation not found" });
+
+    if (donation.status === "completed") {
+      return res.json({
+        success: true,
+        message: "Already confirmed",
+        donation,
+      });
+    }
+
+    // Mark completed and update assistance
+    donation.status = "completed";
+    donation.confirmedAt = new Date();
+    await donation.save();
+
+    const assistance = await PatientAssistance.findByIdAndUpdate(
+      donation.assistanceId,
+      { $inc: { raisedAmount: donation.amount } },
+      { new: true }
+    ).populate("patientId");
+
+    // Send notification to patient owner (if exists) and broadcast activity
+    const io = req.app.get("io");
+    const patientUserId = assistance?.patientId?.userId;
+    const donorName = donation.isAnonymous
+      ? "Một nhà hảo tâm"
+      : donation.donorName || donation.userId?.fullName || "Người dùng";
+    const message = `${donorName} đã quyên góp ${donation.amount.toLocaleString(
+      "vi-VN"
+    )} VNĐ${assistance ? ` cho bệnh nhân ${assistance.title}` : ""}`;
+
+    if (patientUserId) {
+      await createNotification(
+        patientUserId,
+        notificationTypes.DONATION_RECEIVED,
+        "Bạn nhận được quyên góp",
+        message,
+        io
+      );
+    }
+
+    if (io) {
+      io.emit("activity", {
+        id: `donation_${donation._id}`,
+        type: "donation",
+        message,
+        time: new Date().toISOString(),
+      });
+    }
+
+    // Send thank-you email to donor if email is present and not yet sent
+    try {
+      if (donation.donorEmail && !donation.thankYouEmailSent) {
+        const donorDisplayName = donation.isAnonymous
+          ? "Nhà hảo tâm"
+          : donation.donorName || "Bạn";
+        const amountFormatted =
+          donation.amount.toLocaleString("vi-VN") + " VND";
+        const html = emailTemplates.donationThankYou(
+          donorDisplayName,
+          amountFormatted,
+          assistance?.title || ""
+        );
+        await sendEmail(donation.donorEmail, "Cảm ơn bạn đã quyên góp", html);
+        donation.thankYouEmailSent = true;
+        await donation.save();
+      }
+    } catch (err) {
+      console.error("Send thank-you email error:", err);
+    }
+
+    return res.json({ success: true, message: "Donation confirmed", donation });
+  } catch (error) {
+    console.error("Confirm success error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
 // Handle VNPAY IPN (server-to-server, update DB)
 exports.handleVnpayIpn = async (req, res) => {
   try {
@@ -334,15 +429,65 @@ exports.handleVnpayIpn = async (req, res) => {
       donation.status = "completed";
       donation.confirmedAt = new Date();
       // Update assistance raised amount
-      await PatientAssistance.findByIdAndUpdate(
+      const assistance = await PatientAssistance.findByIdAndUpdate(
         donation.assistanceId,
         { $inc: { raisedAmount: amount } },
         { new: true }
-      );
+      ).populate("patientId");
       console.log(
         `Updated raisedAmount for assistance ${donation.assistanceId}`
       );
       await donation.save();
+
+      // Notify patient owner and broadcast activity
+      const io = req.app.get("io");
+      const patientUserId = assistance?.patientId?.userId;
+      const donorName = donation.isAnonymous
+        ? "Một nhà hảo tâm"
+        : donation.donorName || donation.userId?.fullName || "Người dùng";
+      const message = `${donorName} đã quyên góp ${donation.amount.toLocaleString(
+        "vi-VN"
+      )} VNĐ${assistance ? ` cho bệnh nhân ${assistance.title}` : ""}`;
+
+      if (patientUserId) {
+        await createNotification(
+          patientUserId,
+          notificationTypes.DONATION_RECEIVED,
+          "Bạn nhận được quyên góp",
+          message,
+          io
+        );
+      }
+      if (io) {
+        io.emit("activity", {
+          id: `donation_${donation._id}`,
+          type: "donation",
+          message,
+          time: new Date().toISOString(),
+        });
+      }
+
+      // Send thank-you email to donor if email is present and not yet sent
+      try {
+        if (donation.donorEmail && !donation.thankYouEmailSent) {
+          const donorDisplayName = donation.isAnonymous
+            ? "Nhà hảo tâm"
+            : donation.donorName || "Bạn";
+          const amountFormatted =
+            donation.amount.toLocaleString("vi-VN") + " VND";
+          const html = emailTemplates.donationThankYou(
+            donorDisplayName,
+            amountFormatted,
+            assistance?.title || ""
+          );
+          await sendEmail(donation.donorEmail, "Cảm ơn bạn đã quyên góp", html);
+          donation.thankYouEmailSent = true;
+          await donation.save();
+        }
+      } catch (err) {
+        console.error("Send thank-you email error:", err);
+      }
+
       console.log(`Donation ${txnRef} completed`);
     } else {
       // Failed
@@ -443,9 +588,64 @@ exports.handlePaypalWebhook = async (req, res) => {
       await donation.save();
 
       // Cập nhật số tiền đã quyên góp cho bệnh nhân
-      await PatientAssistance.findByIdAndUpdate(donation.assistanceId, {
-        $inc: { raisedAmount: donation.amount },
-      });
+      const assistance = await PatientAssistance.findByIdAndUpdate(
+        donation.assistanceId,
+        {
+          $inc: { raisedAmount: donation.amount },
+        },
+        { new: true }
+      ).populate("patientId");
+
+      // Notify patient owner and broadcast activity
+      try {
+        const io = req.app.get("io");
+        const patientUserId = assistance?.patientId?.userId;
+        const donorName = donation.isAnonymous
+          ? "Một nhà hảo tâm"
+          : donation.donorName || donation.userId?.fullName || "Người dùng";
+        const message = `${donorName} đã quyên góp ${donation.amount.toLocaleString(
+          "vi-VN"
+        )} VNĐ${assistance ? ` cho bệnh nhân ${assistance.title}` : ""}`;
+        if (patientUserId) {
+          await createNotification(
+            patientUserId,
+            notificationTypes.DONATION_RECEIVED,
+            "Bạn nhận được quyên góp",
+            message,
+            io
+          );
+        }
+        if (io) {
+          io.emit("activity", {
+            id: `donation_${donation._id}`,
+            type: "donation",
+            message,
+            time: new Date().toISOString(),
+          });
+        }
+      } catch (err) {
+        console.error("Notification emit error:", err);
+      }
+
+      // Send thank-you email to donor if email is present and not yet sent
+      try {
+        if (donation.donorEmail && !donation.thankYouEmailSent) {
+          const donorDisplayName = donation.isAnonymous
+            ? "Nhà hảo tâm"
+            : donation.donorName || "Bạn";
+          const amountFormatted = `${donation.amount} USD`;
+          const html = emailTemplates.donationThankYou(
+            donorDisplayName,
+            amountFormatted,
+            assistance?.title || ""
+          );
+          await sendEmail(donation.donorEmail, "Cảm ơn bạn đã quyên góp", html);
+          donation.thankYouEmailSent = true;
+          await donation.save();
+        }
+      } catch (err) {
+        console.error("Send thank-you email error:", err);
+      }
 
       console.log(
         `[PAYPAL] Donation ${txnRef} confirmed – ${donation.amount} USD`

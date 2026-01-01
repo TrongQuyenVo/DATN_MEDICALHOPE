@@ -4,10 +4,22 @@ import NavHeader from "@/components/layout/NavHeader";
 import { Heart } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import ChatBubble from "./ChatbotPage";
+import { useEffect } from "react";
+import toast from "react-hot-toast";
+import { donationsAPI } from "@/lib/api";
 
 export default function DonationSuccess() {
   const [searchParams] = useSearchParams();
   const txnRef = searchParams.get("txnRef") || "Đang xử lý...";
+
+  useEffect(() => {
+    if (!txnRef) return;
+    donationsAPI.confirmSuccess(txnRef).then(() => {
+      toast.success('Giao dịch đã được xác nhận');
+    }).catch(() => {
+      // ignore; webhook may confirm later
+    });
+  }, [txnRef]);
 
   return (
     <>

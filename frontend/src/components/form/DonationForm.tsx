@@ -30,7 +30,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { donationsAPI } from "@/lib/api"; // Assume you have donationAPI
 import { assistanceAPI } from "@/lib/api";
 import { useAppStore } from "@/stores/appStore";
-import VNpay from "@/assets/vnpay-logo.png";
+import paypal from "@/assets/paypal.png";
 import ChatBubble from "@/pages/ChatbotPage";
 
 interface PatientAssistance {
@@ -370,7 +370,7 @@ export default function DonationForm({ open, onOpenChange, assistanceId }: Donat
             <Label>Phương thức thanh toán</Label>
             <div className="p-3 bg-blue-50 rounded-lg">
               <div className="flex items-center gap-3">
-                <img src={VNpay} alt="VNPay" className="h-6 w-6" />
+                <img src={paypal} alt="VNPay" className="h-6 w-6" />
                 <span className="font-medium text-blue-900">VNPay (An toàn & Nhanh chóng)</span>
               </div>
             </div>
@@ -390,7 +390,7 @@ export default function DonationForm({ open, onOpenChange, assistanceId }: Donat
               </>
             ) : (
               <>
-                <img src={VNpay} alt="VNPay" className="h-8 mr-3" />
+                <img src={paypal} alt="VNPay" className="h-8 mr-3" />
                 Thanh toán an toàn ngay
               </>
             )}

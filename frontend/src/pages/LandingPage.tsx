@@ -75,6 +75,8 @@ interface AssistanceRequest {
   title: string;
   description: string;
   medicalCondition: string;
+  supportStartDate: string;
+  supportEndDate: string;
   requestedAmount: number;
   raisedAmount: number;
   urgency: string;
@@ -129,8 +131,10 @@ export default function LandingPage() {
   const [doctorLoading, setDoctorLoading] = useState(true);
   const [clinicLoading, setClinicLoading] = useState(true);
   const [ongoingEvents, setOngoingEvents] = useState<any[]>([]);
+  const [ongoingIndex, setOngoingIndex] = useState(0);
   const [eventsLoading, setEventsLoading] = useState(true);
   const [packages, setPackages] = useState<any[]>([]);
+  const [packagesIndex, setPackagesIndex] = useState(0);
   const [packagesLoading, setPackagesLoading] = useState(true);
   const [selectedBusPartner, setSelectedBusPartner] = useState<Partner | null>(null);
   const [busModalOpen, setBusModalOpen] = useState(false);
@@ -370,6 +374,15 @@ export default function LandingPage() {
       age--;
     }
     return age;
+  };
+
+  // Returns true if the request's support end date is strictly before now.
+  // End date is treated as inclusive (valid until end of the day).
+  const isSupportExpired = (req: AssistanceRequest) => {
+    if (!req?.supportEndDate) return false;
+    const end = new Date(req.supportEndDate);
+    end.setHours(23, 59, 59, 999);
+    return end.getTime() < Date.now();
   };
   // Add OngoingEventCard component
   const OngoingEventCard: React.FC<{ event: any; index: number }> = ({ event, index }) => {
@@ -625,7 +638,7 @@ export default function LandingPage() {
       </section>
 
       {/* === HOẠT ĐỘNG ĐANG DIỄN RA (MỚI) === */}
-      <section className="py-20 bg-gradient-to-br from-primary/10 via-background to-secondary/10">
+      <section className="py-20 bg-green-50/100">
         <div className="container mx-auto px-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -644,11 +657,31 @@ export default function LandingPage() {
               Cùng theo dõi và tham gia ngay các chương trình đang được triển khai trên toàn quốc.
             </p>
           </motion.div>
-          {/* Danh sách sự kiện đang diễn ra */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {ongoingEvents.map((event, index) => (
-              <OngoingEventCard key={event.id} event={event} index={index} />
-            ))}
+          {/* Danh sách sự kiện đang diễn ra (hiện 3 mục 1 lần, dùng mũi tên để chuyển) */}
+          <div className="relative max-w-6xl mx-auto">
+            {ongoingIndex > 0 && (
+              <button
+                onClick={() => setOngoingIndex((prev) => Math.max(prev - 3, 0))}
+                className="absolute -left-12 top-1/2 transform -translate-y-1/2 bg-primary/10 hover:bg-primary/20 text-primary p-2 rounded-full shadow-md transition z-10"
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </button>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {ongoingEvents.slice(ongoingIndex, ongoingIndex + 3).map((event, idx) => (
+                <OngoingEventCard key={event._id || event.id} event={event} index={idx} />
+              ))}
+            </div>
+
+            {ongoingIndex + 3 < ongoingEvents.length && (
+              <button
+                onClick={() => setOngoingIndex((prev) => Math.min(prev + 3, ongoingEvents.length - 3))}
+                className="absolute -right-12 top-1/2 transform -translate-y-1/2 bg-primary/10 hover:bg-primary/20 text-primary p-2 rounded-full shadow-md transition z-10"
+              >
+                <ChevronRight className="h-6 w-6" />
+              </button>
+            )}
           </div>
           {/* Nếu không có sự kiện nào */}
           {ongoingEvents.length === 0 && (
@@ -670,7 +703,7 @@ export default function LandingPage() {
       </section>
 
       {/* === GÓI KHÁM MIỄN PHÍ === */}
-      <section className="py-20 bg-background relative">
+      <section className="py-20 relative bg-yellow-50/70">
         <div className="container mx-auto px-4">
           {/* Tiêu đề section */}
           <motion.div
@@ -691,63 +724,83 @@ export default function LandingPage() {
               Chúng tôi sẽ xem xét và hỗ trợ bạn trong khả năng tốt nhất.
             </p>
           </motion.div>
-          {/* Grid 3 gói tiêu biểu */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto mb-12">
-            {packages.map((pkg, i) => (
-              <motion.div
-                key={pkg._id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="group"
+          {/* Grid 3 gói tiêu biểu — hiển thị 3 items 1 lần với mũi tên */}
+          <div className="relative max-w-6xl mx-auto mb-12">
+            {packagesIndex > 0 && (
+              <button
+                onClick={() => setPackagesIndex((prev) => Math.max(prev - 3, 0))}
+                className="absolute -left-12 top-1/2 transform -translate-y-1/2 bg-primary/10 hover:bg-primary/20 text-primary p-2 rounded-full shadow-md transition z-10"
               >
-                <Card
-                  className="healthcare-card h-full group-hover:shadow-2xl group-hover:border-primary transition-all duration-300 border-2 cursor-pointer"
-                  onClick={() => {
-                    setSelectedPkg(pkg);
-                    setDetailOpen(true);
-                  }}
-                >
-                  {/* ảnh + nội dung giữ nguyên */}
-                  <div className="h-48 w-full overflow-hidden rounded-t-lg">
-                    <img
-                      src={pkg.image ? `${API_SERVER}${pkg.image}` : unthuImg}
-                      alt={pkg.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      onError={(e) => { e.currentTarget.src = unthuImg; }}
-                    />
-                  </div>
-                  <CardContent className="p-6 space-y-4">
-                    <div className="inline-flex items-center gap-1 text-sm font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full">
-                      <span>{pkg.specialty}</span>
-                    </div>
-                    <h3 className="font-bold text-lg text-gray-900 group-hover:text-primary transition-colors">
-                      {pkg.title}
-                    </h3>
-                    <p className="text-sm text-gray-600 line-clamp-2">{pkg.shortDescription}</p>
-                    <p className="text-xs italic text-orange-600">
-                      <strong>Điều kiện:</strong> {pkg.conditions}
-                    </p>
+                <ChevronLeft className="h-6 w-6" />
+              </button>
+            )}
 
-                    {/* Nút Đăng ký ngay */}
-                    <div
-                      onClick={(e) => {
-                        e.stopPropagation();           // ← ngăn mở modal chi tiết
-                        setSelectedPkg(pkg);            // ← lưu gói đang chọn
-                        setFormOpen(true);              // ← mở form đơn giản
-                      }}
-                      className="mt-4"
-                    >
-                      <Button className="w-full bg-gradient-to-r from-blue-600 to-green-600 text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all" size="lg">
-                        Đăng ký ngay
-                        <ArrowRight className="ml-2 h-5 w-5" />
-                      </Button>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {packages.slice(packagesIndex, packagesIndex + 3).map((pkg, i) => (
+                <motion.div
+                  key={pkg._id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                  className="group"
+                >
+                  <Card
+                    className="healthcare-card h-full group-hover:shadow-2xl group-hover:border-primary transition-all duration-300 border-2 cursor-pointer"
+                    onClick={() => {
+                      setSelectedPkg(pkg);
+                      setDetailOpen(true);
+                    }}
+                  >
+                    {/* ảnh + nội dung giữ nguyên */}
+                    <div className="h-48 w-full overflow-hidden rounded-t-lg">
+                      <img
+                        src={pkg.image ? `${API_SERVER}${pkg.image}` : unthuImg}
+                        alt={pkg.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        onError={(e) => { e.currentTarget.src = unthuImg; }}
+                      />
                     </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
+                    <CardContent className="p-6 space-y-4">
+                      <div className="inline-flex items-center gap-1 text-sm font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full">
+                        <span>{pkg.specialty}</span>
+                      </div>
+                      <h3 className="font-bold text-lg text-gray-900 group-hover:text-primary transition-colors">
+                        {pkg.title}
+                      </h3>
+                      <p className="text-sm text-gray-600 line-clamp-2">{pkg.shortDescription}</p>
+                      <p className="text-xs italic text-orange-600">
+                        <strong>Điều kiện:</strong> {pkg.conditions}
+                      </p>
+
+                      {/* Nút Đăng ký ngay */}
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation();           // ← ngăn mở modal chi tiết
+                          setSelectedPkg(pkg);            // ← lưu gói đang chọn
+                          setFormOpen(true);              // ← mở form đơn giản
+                        }}
+                        className="mt-4"
+                      >
+                        <Button className="w-full bg-gradient-to-r from-blue-600 to-green-600 text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all" size="lg">
+                          Đăng ký ngay
+                          <ArrowRight className="ml-2 h-5 w-5" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+
+            {packagesIndex + 3 < packages.length && (
+              <button
+                onClick={() => setPackagesIndex((prev) => Math.min(prev + 3, packages.length - 3))}
+                className="absolute -right-12 top-1/2 transform -translate-y-1/2 bg-primary/10 hover:bg-primary/20 text-primary p-2 rounded-full shadow-md transition z-10"
+              >
+                <ChevronRight className="h-6 w-6" />
+              </button>
+            )}
           </div>
 
           {/* Nút xem tất cả */}
@@ -789,7 +842,7 @@ export default function LandingPage() {
       </section>
 
       {/* Support Requests Section */}
-      <section className="py-20 bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+      <section className="py-20 bg-red-50/100">
         <div className="container mx-auto px-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -836,6 +889,7 @@ export default function LandingPage() {
                         viewport={{ once: true }}
                         transition={{ delay: index * 0.1 }}
                         className="group"
+                        onClick={() => navigate(`/assistance/${request._id}`)}
                       >
                         <div className="cursor-pointer">
                           <Card className="healthcare-card h-full group-hover:shadow-2xl group-hover:border-primary transition-all duration-300 border-2">
@@ -864,6 +918,16 @@ export default function LandingPage() {
                               <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
                                 {request.description}
                               </p>
+                              <p className="mt-1 text-xs mb-2">
+                                <span className="font-bold text-red-600">Thời gian hỗ trợ:</span>{" "}
+                                <span className="font-bold text-red-600">
+                                  {new Date(request.supportStartDate).toLocaleDateString("vi-VN")}
+                                </span>{" "}
+                                –{" "}
+                                <span className="font-bold text-red-600">
+                                  {new Date(request.supportEndDate).toLocaleDateString("vi-VN")}
+                                </span>
+                              </p>
                               <div className="mb-4">
                                 <div className="flex justify-between text-sm mb-2">
                                   <span>Số tiền cần:</span>
@@ -880,16 +944,30 @@ export default function LandingPage() {
                                   Đã quyên góp: {((request.raisedAmount / request.requestedAmount) * 100).toFixed(0)}%
                                 </p>
                               </div>
+
                               <div
                                 onClick={(e) => e.stopPropagation()}
                                 className="mt-4"
                               >
-                                <Button
-                                  className="bg-red-500 text-white hover:bg-red-600 w-full"
-                                  onClick={() => setSelectedAssistanceId(request._id)}
-                                >
-                                  Ủng hộ ngay
-                                </Button>
+                                {isSupportExpired(request) ? (
+                                  <div className="text-center py-3" onClick={(e) => e.stopPropagation()}>
+                                    <Badge className="bg-gray-100 text-gray-700">Đã hết thời gian ủng hộ</Badge>
+                                  </div>
+                                ) : request.raisedAmount < request.requestedAmount ? (
+                                  <Button
+                                    className="bg-red-500 text-white hover:bg-red-600 w-full"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (!isSupportExpired(request)) setSelectedAssistanceId(request._id);
+                                    }}
+                                  >
+                                    Ủng hộ ngay
+                                  </Button>
+                                ) : (
+                                  <div className="text-center py-3">
+                                    <Badge className="bg-emerald-100 text-emerald-800">Đã nhận đủ hỗ trợ</Badge>
+                                  </div>
+                                )}
                               </div>
                             </CardContent>
                           </Card>
@@ -921,7 +999,7 @@ export default function LandingPage() {
       </section>
 
       {/* Testimonials Section */}
-      <section className="py-20 bg-background relative">
+      <section className="py-20 relative bg-pink-50/100">
         <div className="container mx-auto px-4">
           <HeartAnimation />
           <motion.div
@@ -1074,10 +1152,10 @@ export default function LandingPage() {
             <DialogContent className="sm:max-w-[600px]">
               <DialogHeader>
                 <DialogTitle>
-                  {selectedTestimonial?.name}, {selectedTestimonial?.age} tuổi
+                  Ẩn danh
                 </DialogTitle>
                 <DialogDescription>
-                  {selectedTestimonial?.location} | {selectedTestimonial?.treatment}
+                  {selectedTestimonial?.treatment}
                 </DialogDescription>
               </DialogHeader>
               <div className="mt-4 space-y-2">

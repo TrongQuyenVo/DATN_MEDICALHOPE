@@ -35,8 +35,9 @@ const DonationSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: ["pending", "completed", "failed"], // Removed cancelled, simplified
-      default: "completed",
+      default: "pending",
     },
+    thankYouEmailSent: { type: Boolean, default: false },
     confirmedAt: { type: Date },
   },
   { timestamps: true }

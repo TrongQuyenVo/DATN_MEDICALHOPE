@@ -7,6 +7,8 @@ const router = express.Router();
 
 router.post("/", donationController.createDonation); // Optional auth for guests?
 
+// Confirm donation by txnRef (idempotent) — used by frontend after redirect
+router.get('/confirm-success/:txnRef', donationController.confirmSuccess);
 
 router.get("/paypal-return", donationController.handlePaypalReturn);
 router.post(

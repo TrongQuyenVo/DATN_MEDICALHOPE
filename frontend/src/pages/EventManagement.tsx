@@ -117,9 +117,8 @@ export default function EventManagement() {
   const onSubmit = async (data: EventFormData) => {
     const formData = new FormData();
     Object.entries(data).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        formData.append(key, value.toString());
-      }
+      if (value === undefined || value === null || value === '') return;
+      formData.append(key, value.toString());
     });
     if (imageFile) formData.append('image', imageFile);
     formData.append('isActive', 'true');

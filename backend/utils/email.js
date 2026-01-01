@@ -40,7 +40,9 @@ const emailTemplates = {
   donationThankYou: (donorName, amount, purpose) => `
     <h2>Cảm ơn bạn đã quyên góp</h2>
     <p>Xin chào ${donorName},</p>
-    <p>Cảm ơn bạn đã quyên góp ${amount} VND cho mục đích: ${purpose}</p>
+    <p>Cảm ơn bạn đã quyên góp <strong>${amount}</strong>${
+    purpose ? ` cho mục đích: ${purpose}` : ""
+  }.</p>
     <p>Sự đóng góp của bạn sẽ giúp chúng tôi hỗ trợ tốt hơn những bệnh nhân có hoàn cảnh khó khăn.</p>
     <p>Trân trọng,<br>Đội ngũ Y tế từ thiện</p>
   `,

@@ -283,33 +283,58 @@ export default function EventDetailPage() {
 
                 {/* NÚT ĐĂNG KÝ SIÊU HẤP DẪN */}
                 <div className="mt-8 pt-6 border-t border-blue-100">
-                  <Button
-                    size="lg"
-                    className="w-full text-lg py-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300
-                               bg-gradient-to-r from-blue-600 to-cyan-600 
-                               hover:from-blue-700 hover:to-cyan-700 
-                               text-white font-bold text-xl"
-                    onClick={() => setRegisterOpen(true)}
-                  >
-                    <Sparkles className="mr-3 h-6 w-6" />
-                    ĐĂNG KÝ THAM GIA NGAY
-                    <Sparkles className="ml-3 h-6 w-6" />
-                  </Button>
-                </div>
+                  {(() => {
+                    const now = new Date();
+                    const start = new Date(event.startDate);
+                    const end = event.endDate ? new Date(event.endDate) : start;
 
-                <div className="mt-4 flex justify-center">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-blue-300 text-blue-700 hover:bg-blue-50 font-medium"
-                    onClick={() => {
-                      navigator.clipboard.writeText(window.location.href);
-                      toast.success('Đã sao chép link chia sẻ!');
-                    }}
-                  >
-                    <Share2 className="h-4 w-4 mr-2" />
-                    Chia sẻ chương trình
-                  </Button>
+                    const isEnded = end < now;
+
+                    if (isEnded) {
+                      return (
+                        <Button
+                          size="lg"
+                          disabled
+                          className="w-full text-lg py-8 rounded-2xl opacity-70 cursor-not-allowed
+                     bg-gray-400 text-gray-200 font-bold text-xl"
+                        >
+                          <Sparkles className="mr-3 h-6 w-6" />
+                          SỰ KIỆN ĐÃ KẾT THÚC
+                          <Sparkles className="ml-3 h-6 w-6" />
+                        </Button>
+                      );
+                    }
+
+                    return (
+                      <Button
+                        size="lg"
+                        className="w-full text-lg py-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300
+                   bg-gradient-to-r from-blue-600 to-cyan-600 
+                   hover:from-blue-700 hover:to-cyan-700 
+                   text-white font-bold text-xl"
+                        onClick={() => setRegisterOpen(true)}
+                      >
+                        <Sparkles className="mr-3 h-6 w-6" />
+                        ĐĂNG KÝ THAM GIA NGAY
+                        <Sparkles className="ml-3 h-6 w-6" />
+                      </Button>
+                    );
+                  })()}
+
+                  <div className="mt-4 flex justify-center">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-blue-300 text-blue-700 hover:bg-blue-50 font-medium"
+                      onClick={() => {
+                        navigator.clipboard.writeText(window.location.href);
+                        toast.success('Đã sao chép link chia sẻ!');
+                      }}
+                    >
+                      <Share2 className="h-4 w-4 mr-2" />
+                      Chia sẻ chương trình
+                    </Button>
+                  </div>
                 </div>
               </motion.div>
             </div>

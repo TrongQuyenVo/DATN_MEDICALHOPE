@@ -58,7 +58,7 @@ export default function EventRegisterForm({ event, open, onOpenChange, onSuccess
             <Input name="phone" required type="tel" placeholder="0901234567" />
           </div>
           <div>
-            <Label>Email (không bắt buộc)</Label>
+            <Label>Email</Label>
             <Input name="email" type="email" placeholder="email@domain.com" />
           </div>
           <div className="flex gap-3 pt-4">

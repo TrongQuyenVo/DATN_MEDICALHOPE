@@ -64,6 +64,13 @@ router.patch(
 );
 router.get("/public", assistanceController.getPublicAssistances);
 router.get("/:id", assistanceController.getAssistanceById);
+// Admin-only: withdraw funds for an assistance request
+router.patch(
+  "/:id/withdraw",
+  auth,
+  authorize("admin"),
+  assistanceController.withdrawFunds
+);
 router.delete(
   "/:id",
   auth,

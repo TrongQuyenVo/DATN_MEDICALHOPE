@@ -54,6 +54,10 @@ export default function UsersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [totalUsersFromServer, setTotalUsersFromServer] = useState<number>(0);
+  const [stats, setStats] = useState<{ total: number; active: number; verified: number; newThisMonth: number; suspended: number }>({ total: 0, active: 0, verified: 0, newThisMonth: 0, suspended: 0 });
   const { user, updateUser } = useAuthStore();
 
   const isAdmin = user?.role === 'admin';
@@ -67,10 +71,16 @@ export default function UsersPage() {
     return `${prefix}${avatarPath.startsWith('/') ? '' : '/'}${avatarPath}`;
   };
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (page: number = currentPage) => {
     try {
       setLoading(true);
-      const response = await usersAPI.getAllUsers();
+      const params: any = { limit: 10, page };
+      if (roleFilter && roleFilter !== 'all') params.role = roleFilter;
+      if (statusFilter && statusFilter !== 'all') params.status = statusFilter;
+      if (searchTerm && searchTerm.trim()) params.q = searchTerm.trim();
+
+      const response = await usersAPI.getAllUsers(params);
+
       const usersData = Array.isArray(response.data.users) ? response.data.users : [];
       const mappedUsers: User[] = usersData.map((user: any) => ({
         id: user._id,
@@ -85,19 +95,139 @@ export default function UsersPage() {
         profile: user.profile,
         avatar: user.avatar,
       }));
+
       setUsers(mappedUsers);
+
+      // pagination info from server
+      if (response.data.pagination) {
+        setTotalPages(response.data.pagination.pages || 1);
+        setTotalUsersFromServer(response.data.pagination.total || 0);
+        setCurrentPage(response.data.pagination.page || page);
+      } else {
+        setTotalPages(1);
+        setTotalUsersFromServer(mappedUsers.length);
+      }
+
+      // aggregated stats (so summary cards don't change when paging)
+      if (response.data.stats) {
+        setStats({
+          total: response.data.stats.total || 0,
+          active: response.data.stats.active || 0,
+          verified: response.data.stats.verified || 0,
+          newThisMonth: response.data.stats.newThisMonth || 0,
+          suspended: response.data.stats.suspended || 0,
+        });
+      } else {
+        // fallback: compute from current page
+        setStats({
+          total: response.data.pagination?.total || mappedUsers.length,
+          active: mappedUsers.filter(u => u.status === 'active').length,
+          verified: mappedUsers.filter(u => u.isActive).length,
+          newThisMonth: mappedUsers.filter(u => new Date(u.createdAt).getMonth() === new Date().getMonth()).length,
+          suspended: mappedUsers.filter(u => u.status === 'suspended').length,
+        });
+      }
     } catch (error) {
       console.error('Error fetching users:', error);
       toast.error('Không thể lấy danh sách người dùng. Vui lòng thử lại.');
       setUsers([]);
+      setTotalPages(1);
+      setTotalUsersFromServer(0);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchUsers();
+    // initial load
+    fetchUsers(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // refetch when page changes
+  useEffect(() => {
+    fetchUsers(currentPage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage]);
+
+  // when filters change, reset to first page and fetch with new filters
+  useEffect(() => {
+    setCurrentPage(1);
+    fetchUsers(1);
+  }, [roleFilter, statusFilter]);
+
+  // debounce search: reset to first page and fetch with the search query
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setCurrentPage(1);
+      fetchUsers(1);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
+  // State to track which user is being processed (suspend/activate/delete)
+  const [processingId, setProcessingId] = useState<string | null>(null);
+
+  const handleToggleSuspend = async (id: string, status: string) => {
+    if (!isAdmin) {
+      toast.error('Chỉ quản trị viên mới có quyền này');
+      return;
+    }
+
+    if (id === user?.id) {
+      toast.error('Bạn không thể thao tác lên chính mình');
+      return;
+    }
+
+    const confirmMsg = status === 'suspended'
+      ? 'Bạn có chắc muốn kích hoạt tài khoản này?'
+      : 'Bạn có chắc muốn đình chỉ tài khoản này?';
+
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      setProcessingId(id);
+      if (status === 'suspended') {
+        await usersAPI.activateUser(id);
+        toast.success('Tài khoản đã được kích hoạt');
+      } else {
+        await usersAPI.suspendUser(id);
+        toast.success('Tài khoản đã bị đình chỉ');
+      }
+      await fetchUsers(currentPage);
+    } catch (error) {
+      console.error(error);
+      toast.error('Thao tác thất bại. Vui lòng thử lại.');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleDeleteUser = async (id: string) => {
+    if (!isAdmin) {
+      toast.error('Chỉ quản trị viên mới có quyền này');
+      return;
+    }
+
+    if (id === user?.id) {
+      toast.error('Bạn không thể xóa chính mình');
+      return;
+    }
+
+    if (!window.confirm('Bạn có chắc muốn xóa tài khoản này? Hành động này không thể hoàn tác.')) return;
+
+    try {
+      setProcessingId(id);
+      await usersAPI.deleteUser(id);
+      toast.success('Tài khoản đã được xóa');
+      await fetchUsers(currentPage);
+    } catch (error) {
+      console.error(error);
+      toast.error('Xóa thất bại. Vui lòng thử lại.');
+    } finally {
+      setProcessingId(null);
+    }
+  };
 
   const getRoleLabel = (role: string) => {
     switch (role) {
@@ -135,19 +265,14 @@ export default function UsersPage() {
     }
   };
 
-  const filteredUsers = Array.isArray(users) ? users.filter(user => {
-    const matchesSearch = user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
-    const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
+  // The users list now comes from server with applied filters and pagination.
+  const filteredUsers = Array.isArray(users) ? users : [];
 
-    return matchesSearch && matchesRole && matchesStatus;
-  }) : [];
-
-  const totalUsers = filteredUsers.length;
-  const activeUsers = filteredUsers.filter(u => u.status === 'active').length;
-  const verifiedUsers = filteredUsers.filter(u => u.isActive).length;
-  const newUsersThisMonth = filteredUsers.filter(u =>
+  // Use aggregated stats from server so these don't change when paging
+  const totalUsers = stats.total || totalUsersFromServer || filteredUsers.length;
+  const activeUsers = stats.active ?? filteredUsers.filter(u => u.status === 'active').length;
+  const verifiedUsers = stats.verified ?? filteredUsers.filter(u => u.isActive).length;
+  const newUsersThisMonth = stats.newThisMonth ?? filteredUsers.filter(u =>
     new Date(u.createdAt).getMonth() === new Date().getMonth()
   ).length;
 
@@ -205,7 +330,7 @@ export default function UsersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-destructive">
-              {filteredUsers.filter(u => u.status === 'suspended').length}
+              {stats.suspended ?? filteredUsers.filter(u => u.status === 'suspended').length}
             </div>
             <p className="text-xs text-muted-foreground">Cần xem xét</p>
           </CardContent>
@@ -326,22 +451,59 @@ export default function UsersPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          {user.status === 'active' ? (
-                            <DropdownMenuItem className="text-warning">
-                              <ShieldX className="mr-2 h-4 w-4" />
-                              Đình chỉ
-                            </DropdownMenuItem>
+                          {isAdmin ? (
+                            user.status === 'active' ? (
+                              <DropdownMenuItem
+                                className="text-warning"
+                                onClick={() => handleToggleSuspend(user.id, user.status)}
+                                disabled={processingId === user.id}
+                              >
+                                <ShieldX className="mr-2 h-4 w-4" />
+                                Đình chỉ
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem
+                                className="text-success"
+                                onClick={() => handleToggleSuspend(user.id, user.status)}
+                                disabled={processingId === user.id}
+                              >
+                                <ShieldCheck className="mr-2 h-4 w-4" />
+                                Kích hoạt
+                              </DropdownMenuItem>
+                            )
                           ) : (
-                            <DropdownMenuItem className="text-success">
-                              <ShieldCheck className="mr-2 h-4 w-4" />
-                              Kích hoạt
+                            <DropdownMenuItem className="opacity-50 pointer-events-none">
+                              {user.status === 'active' ? (
+                                <>
+                                  <ShieldX className="mr-2 h-4 w-4" />
+                                  Đình chỉ
+                                </>
+                              ) : (
+                                <>
+                                  <ShieldCheck className="mr-2 h-4 w-4" />
+                                  Kích hoạt
+                                </>
+                              )}
                             </DropdownMenuItem>
                           )}
+
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive">
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Xóa
-                          </DropdownMenuItem>
+
+                          {isAdmin ? (
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => handleDeleteUser(user.id)}
+                              disabled={processingId === user.id}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Xóa
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem className="opacity-50 pointer-events-none">
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Xóa
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -352,6 +514,40 @@ export default function UsersPage() {
           ))}
         </div>
       )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-end space-x-2">
+          <Button size="sm" variant="ghost" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
+            Trang trước
+          </Button>
+
+          {(() => {
+            const pages = [] as number[];
+            const start = Math.max(1, currentPage - 2);
+            const end = Math.min(totalPages, start + 4);
+            for (let p = start; p <= end; p++) pages.push(p);
+
+            return pages.map(p => (
+              <Button
+                key={p}
+                size="sm"
+                variant={p === currentPage ? 'default' : 'ghost'}
+                onClick={() => setCurrentPage(p)}
+              >
+                {p}
+              </Button>
+            ));
+          })()}
+
+          <Button size="sm" variant="ghost" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
+            Trang sau
+          </Button>
+
+          <div className="text-sm text-muted-foreground">Trang {currentPage} / {totalPages} — Tổng {totalUsers}</div>
+        </div>
+      )}
+
       {!isAdmin && <ChatBubble />}
     </motion.div>
   );

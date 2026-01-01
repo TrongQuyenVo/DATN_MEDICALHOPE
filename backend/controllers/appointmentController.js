@@ -183,21 +183,17 @@ exports.updateAppointmentStatus = async (req, res) => {
     // Kiểm tra trạng thái không cho phép
     if (appointment.status === "confirmed" && status === "cancelled") {
       console.log("❌ Cannot cancel a confirmed appointment");
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Không thể hủy lịch hẹn đã xác nhận",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Không thể hủy lịch hẹn đã xác nhận",
+      });
     }
     if (appointment.status === "cancelled" && status === "confirmed") {
       console.log("❌ Cannot confirm a cancelled appointment");
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Không thể xác nhận lịch hẹn đã hủy",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Không thể xác nhận lịch hẹn đã hủy",
+      });
     }
 
     // Kiểm tra quyền
@@ -236,17 +232,129 @@ exports.updateAppointmentStatus = async (req, res) => {
       });
     }
 
-    // Kiểm tra thời gian
+    // Kiểm tra thời gian: nếu lịch hẹn đã qua, chỉ cho phép chuyển thành `completed`
     if (new Date(appointment.scheduledTime) < new Date()) {
-      console.log("❌ Appointment expired");
-      return res.status(400).json({
-        success: false,
-        message: "Lịch hẹn đã quá thời gian, không thể cập nhật trạng thái",
-      });
+      if (status !== "completed") {
+        console.log("❌ Appointment expired - only completion allowed");
+        return res.status(400).json({
+          success: false,
+          message: "Lịch hẹn đã quá thời gian, chỉ có thể đánh dấu hoàn thành",
+        });
+      }
     }
 
     // Cập nhật trạng thái và các trường khác
+    const prevStatus = appointment.status;
     appointment.status = status;
+
+    // Nếu hoàn thành, cho phép lưu thời gian bắt đầu và kết thúc khám
+    if (status === "completed") {
+      const { examStartTime, examEndTime } = req.body;
+
+      // nếu trước đây chưa hoàn thành thì tăng số bệnh nhân đã khám
+      // Chỉ tăng khi đây là lần đầu bệnh nhân này được đánh dấu "completed" với bác sĩ này
+      if (prevStatus !== "completed") {
+        const alreadyCompleted = await Appointment.findOne({
+          doctorId: appointment.doctorId,
+          patientId: appointment.patientId,
+          status: "completed",
+          _id: { $ne: appointment._id },
+        });
+
+        if (!alreadyCompleted) {
+          const doctorForCount = await Doctor.findById(appointment.doctorId);
+          if (doctorForCount) {
+            doctorForCount.totalPatients =
+              (doctorForCount.totalPatients || 0) + 1;
+            await doctorForCount.save();
+            console.log(
+              `🔄 Incremented doctor ${doctorForCount._id} totalPatients to ${doctorForCount.totalPatients}`
+            );
+          }
+        } else {
+          console.log(
+            `ℹ️ Patient ${appointment.patientId} already counted for doctor ${appointment.doctorId}, not incrementing totalPatients`
+          );
+        }
+      }
+
+      // giữ giá trị cũ để tính delta khi cập nhật/điều chỉnh
+      const prevStart = appointment.examStartTime
+        ? new Date(appointment.examStartTime)
+        : null;
+      const prevEnd = appointment.examEndTime
+        ? new Date(appointment.examEndTime)
+        : null;
+      const prevDurationHours =
+        prevStart && prevEnd
+          ? Math.max(0, (prevEnd - prevStart) / (1000 * 60 * 60))
+          : 0;
+
+      let newStart = null;
+      let newEnd = null;
+
+      if (examStartTime) {
+        const s = new Date(examStartTime);
+        if (isNaN(s.getTime())) {
+          return res.status(400).json({
+            success: false,
+            message: "Thời gian bắt đầu không hợp lệ",
+          });
+        }
+        newStart = s;
+        appointment.examStartTime = s;
+      }
+
+      if (examEndTime) {
+        const e = new Date(examEndTime);
+        if (isNaN(e.getTime())) {
+          return res.status(400).json({
+            success: false,
+            message: "Thời gian kết thúc không hợp lệ",
+          });
+        }
+        newEnd = e;
+        appointment.examEndTime = e;
+      }
+
+      const finalStart = newStart || prevStart;
+      const finalEnd = newEnd || prevEnd;
+
+      if (finalStart && finalEnd && finalStart > finalEnd) {
+        return res.status(400).json({
+          success: false,
+          message: "Thời gian bắt đầu phải trước thời gian kết thúc",
+        });
+      }
+
+      // nếu có cả start và end thì tính giờ và cập nhật cho bác sĩ (cho phép điều chỉnh bằng delta)
+      if (finalStart && finalEnd) {
+        const newDurationHours = Math.max(
+          0,
+          (finalEnd.getTime() - finalStart.getTime()) / (1000 * 60 * 60)
+        );
+        const delta = newDurationHours - prevDurationHours; // có thể âm nếu chỉnh sửa giảm giờ
+
+        if (Math.abs(delta) > 1 / 60) {
+          // nếu khác hơn 1 phút
+          const doctor = await Doctor.findById(appointment.doctorId);
+          if (doctor) {
+            doctor.volunteerHours = Math.max(
+              0,
+              (doctor.volunteerHours || 0) + delta
+            );
+            await doctor.save();
+            appointment.hoursAdded = true;
+            console.log(
+              `🔄 Updated doctor ${
+                doctor._id
+              } volunteerHours by ${delta.toFixed(2)}h`
+            );
+          }
+        }
+      }
+    }
+
     if (doctorNotes) appointment.doctorNotes = doctorNotes;
     if (prescriptions) appointment.prescriptions = prescriptions;
     if (testsOrdered) appointment.testsOrdered = testsOrdered;
@@ -378,12 +486,10 @@ exports.cancelAppointment = async (req, res) => {
     // Kiểm tra trạng thái không cho phép
     if (appointment.status === "confirmed") {
       console.log("❌ Cannot cancel a confirmed appointment");
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Không thể hủy lịch hẹn đã xác nhận",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Không thể hủy lịch hẹn đã xác nhận",
+      });
     }
 
     // Kiểm tra quyền

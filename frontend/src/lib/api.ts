@@ -156,6 +156,7 @@ export const assistanceAPI = {
   getAll: (params?: any) => api.get('/assistance', { params }), // Dành cho người dùng đã đăng nhập
   getPublic: () => api.get('/assistance/public'), // Dành cho landing page
   updateStatus: (id: string, data: any) => api.patch(`/assistance/${id}/status`, data),
+  withdraw: (id: string, data: any) => api.patch(`/assistance/${id}/withdraw`, data),
   delete: (id: string) => api.delete(`/assistance/${id}`),
 };
 

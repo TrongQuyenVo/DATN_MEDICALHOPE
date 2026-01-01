@@ -58,15 +58,19 @@ export default function DoctorDetailDialog({ doctor, open, onOpenChange }: Docto
     return { dayOfWeek, displayDate };
   };
 
+  // Lọc bỏ các ngày đã quá hạn
+  const today = new Date().toISOString().split('T')[0];
+  const visibleSlots = (doctor.upcomingSlots || []).filter((s) => s.date >= today);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto p-0 rounded-2xl">
+      <DialogContent className="max-w-2xl max-h-[92vh] p-0 rounded-2xl flex flex-col">
         {/* Header gradient đẹp */}
-        <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-t-2xl px-6 pt-8 pb-12">
+        <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-t-2xl px-6 py-6">
           <h2 className="text-2xl font-bold text-center">Thông tin bác sĩ</h2>
         </div>
 
-        <div className="px-6 pb-8 -mt-10">
+        <div className="px-6 overflow-y-auto flex-1 pb-20">
           {/* Avatar + Tên */}
           <div className="flex flex-col items-center text-center mb-6">
             <Avatar className="w-28 h-28 ring-8 ring-white shadow-2xl border-4 border-white">
@@ -148,12 +152,12 @@ export default function DoctorDetailDialog({ doctor, open, onOpenChange }: Docto
             </div>
             <div className="text-center p-5 bg-emerald-50 rounded-2xl">
               <Clock3 className="w-9 h-9 mx-auto text-emerald-600 mb-2" />
-              <p className="text-2xl font-bold text-emerald-600">{doctor.volunteerHours || 0}h</p>
+              <p className="text-2xl font-bold text-emerald-600">{Number(doctor.volunteerHours || 0).toFixed(2)}h</p>
               <p className="text-xs text-muted-foreground">Tình nguyện</p>
             </div>
             <div className="text-center p-5 bg-purple-50 rounded-2xl">
               <Calendar className="w-9 h-9 mx-auto text-purple-600 mb-2" />
-              <p className="text-2xl font-bold text-purple-600">{doctor.upcomingSlots?.length || 0}</p>
+              <p className="text-2xl font-bold text-purple-600">{visibleSlots.length || 0}</p>
               <p className="text-xs text-muted-foreground">Ngày rảnh</p>
             </div>
           </div>
@@ -169,14 +173,14 @@ export default function DoctorDetailDialog({ doctor, open, onOpenChange }: Docto
           )}
 
           {/* Lịch rảnh - ĐÃ FIX "Thứ Hai, Thứ Ba" chuẩn 100% */}
-          {doctor.upcomingSlots && doctor.upcomingSlots.length > 0 && (
+          {visibleSlots && visibleSlots.length > 0 && (
             <div className="mb-6">
               <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-blue-600" />
                 Lịch rảnh sắp tới
               </h4>
               <div className="space-y-3">
-                {doctor.upcomingSlots.slice(0, 5).map((slot, i) => {
+                {visibleSlots.slice(0, 5).map((slot, i) => {
                   const { dayOfWeek, displayDate } = formatVietnameseDate(slot.date);
                   return (
                     <div key={i} className="flex justify-between items-center p-4 bg-blue-50 rounded-xl">
@@ -197,30 +201,29 @@ export default function DoctorDetailDialog({ doctor, open, onOpenChange }: Docto
                     </div>
                   );
                 })}
-                {doctor.upcomingSlots.length > 5 && (
+                {visibleSlots.length > 5 && (
                   <p className="text-center text-sm text-muted-foreground mt-3">
-                    Và còn {doctor.upcomingSlots.length - 5} ngày khác...
+                    Và còn {visibleSlots.length - 5} ngày khác...
                   </p>
                 )}
               </div>
             </div>
           )}
+        </div>
 
-          {/* Nút cố định dưới cùng */}
-          <div className="sticky bottom-0 left-0 right-0 bg-white pt-5 -mx-6 px-6 border-t">
-            <div className="flex gap-3">
-              <Button
-                className="flex-1 h-12 text-lg font-semibold bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg"
-                size="lg"
-                onClick={() => setShowBookForm(true)}
-              >
-                <Calendar className="mr-2 w-5 h-5" />
-                Đặt lịch khám miễn phí
-              </Button>
-              <Button variant="outline" size="lg" className="px-8" onClick={() => onOpenChange(false)}>
-                Đóng
-              </Button>
-            </div>
+        <div className="bg-white py-3  px-6 border-t z-10">
+          <div className="flex gap-3">
+            <Button
+              className="flex-1 h-12 text-lg font-semibold bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg"
+              size="lg"
+              onClick={() => setShowBookForm(true)}
+            >
+              <Calendar className="mr-2 w-5 h-5" />
+              Đặt lịch khám miễn phí
+            </Button>
+            <Button variant="outline" size="lg" className="px-8" onClick={() => onOpenChange(false)}>
+              Đóng
+            </Button>
           </div>
         </div>
 
@@ -228,6 +231,7 @@ export default function DoctorDetailDialog({ doctor, open, onOpenChange }: Docto
         <BookAppointmentForm
           open={showBookForm}
           onOpenChange={setShowBookForm}
+          showChatbot={false}
           doctor={{
             id: doctor._id,
             name: doctor.fullName,

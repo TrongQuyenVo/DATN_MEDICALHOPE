@@ -43,7 +43,7 @@ export default function DoctorDashboard() {
     error: profileError,
   } = useQuery({
     queryKey: ['doctor-profile', user.id],
-    queryFn: () => doctorsAPI.getProfile().then(res => res.data),
+    queryFn: () => doctorsAPI.getProfile().then(res => res.data.doctor),
     enabled: !!user.id,
   });
 
@@ -78,7 +78,8 @@ export default function DoctorDashboard() {
   const todayAppointments = allAppointments.filter((apt: any) => {
     if (!apt?.scheduledTime) return false;
     const aptDate = new Date(apt.scheduledTime);
-    return format(aptDate, 'yyyy-MM-dd') === todayStr && ['confirmed', 'scheduled'].includes(apt.status);
+    // include completed appointments so doctors can see today's visits even after finishing
+    return format(aptDate, 'yyyy-MM-dd') === todayStr && ['confirmed', 'scheduled', 'completed'].includes(apt.status);
   });
 
   // === Nếu chưa đăng nhập
@@ -99,7 +100,8 @@ export default function DoctorDashboard() {
     const aptDate = new Date(apt.scheduledTime);
     return (
       isWithinInterval(aptDate, { start: weekStart, end: weekEnd }) &&
-      ['confirmed', 'scheduled'].includes(apt.status)
+      // include completed appointments for weekly stats
+      ['confirmed', 'scheduled', 'completed'].includes(apt.status)
     );
   });
 
@@ -123,7 +125,7 @@ export default function DoctorDashboard() {
       },
       {
         title: 'Giờ tình nguyện',
-        value: doctorProfile?.volunteerHours || 0,
+        value: Number(doctorProfile?.volunteerHours || 0).toFixed(2),
         change: `+12`,
         icon: Clock,
         color: 'text-success',
@@ -398,7 +400,7 @@ export default function DoctorDashboard() {
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-success mb-1">
-                      {doctorProfile?.volunteerHours || 0} giờ
+                      {Number(doctorProfile?.volunteerHours || 0).toFixed(2)} giờ
                     </div>
                     <div className="text-sm text-muted-foreground">Thời gian tình nguyện</div>
                   </div>

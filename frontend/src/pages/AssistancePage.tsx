@@ -16,6 +16,7 @@ import { useNavigate } from 'react-router-dom';
 import ChatBubble from './ChatbotPage';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
+import { useAppStore } from '@/stores/appStore';
 
 interface AssistanceRequest {
   _id: string;
@@ -29,6 +30,7 @@ interface AssistanceRequest {
   description: string;
   requestedAmount: number;
   raisedAmount: number;
+  withdrawnAmount?: number;
   status: 'pending' | 'approved' | 'in_progress' | 'completed' | 'rejected';
   urgency: string;
   contactPhone: string;
@@ -96,6 +98,15 @@ export default function AssistancePage() {
     fetchDonations();
   }, [user]);
 
+  // Re-fetch when notifications change (e.g., donation completed)
+  const notificationsLength = useAppStore((s) => s.notifications.length);
+  useEffect(() => {
+    if (!user) return;
+    // Simple re-sync of lists when new notifications arrive
+    fetchAssistance();
+    fetchDonations();
+  }, [notificationsLength]);
+
   const handleApproveRequest = async (id: string) => {
     try {
       await assistanceAPI.updateStatus(id, { status: 'approved' });
@@ -147,7 +158,7 @@ export default function AssistancePage() {
     worksheet.getRow(1).alignment = { horizontal: 'center', vertical: 'middle' };
 
     donations.forEach((d, i) => {
-      const donor = d.isAnonymous ? 'Ẩn danh' : d.userId?.fullName || 'Người dùng';
+      const donor = d.isAnonymous ? 'Ẩn danh' : d.userId?.fullName || (d as any).donorName || 'Người dùng';
       const target = d.assistanceId?.title || d.campaignId?.title || 'Quyên góp chung';
 
       worksheet.addRow({
@@ -173,10 +184,24 @@ export default function AssistancePage() {
   if (!user) return null;
 
   const myPatientId = (user as any).patientId?._id || user.id;
+
+  // Robust owner check: patientId may be nested or string depending on API response
+  const isOwnerRequest = (r: AssistanceRequest) => {
+    const ownerId = String(myPatientId);
+    const pid = r.patientId as any;
+    // pid may be an object with _id, or pid.userId may be an object or string
+    if (!pid) return false;
+    if (pid._id && String(pid._id) === ownerId) return true;
+    if (pid.userId && typeof pid.userId === 'object' && pid.userId._id && String(pid.userId._id) === ownerId) return true;
+    if (pid.userId && typeof pid.userId === 'string' && String(pid.userId) === ownerId) return true;
+    return false;
+  };
+
   const visibleRequests = isAdmin
     ? assistanceRequests
     : assistanceRequests.filter(r => {
-      const isOwner = String(r.patientId._id) === String(myPatientId);
+      const isOwner = isOwnerRequest(r);
+      // Owners should see their own requests in any status (including pending)
       return isOwner || ['approved', 'in_progress', 'completed'].includes(r.status);
     });
 
@@ -310,6 +335,7 @@ export default function AssistancePage() {
                               </div>
                               <Progress value={progress} className="h-3" />
                               <p className="text-sm text-muted-foreground">{progress.toFixed(0)}% đạt được</p>
+                              <div className="text-sm text-muted-foreground">Đã rút: <span className="font-medium">{formatVND(req.withdrawnAmount || 0)}</span></div>
                             </div>
                           )}
 
@@ -327,10 +353,39 @@ export default function AssistancePage() {
                             <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); navigate(`/assistance/${req._id}`); }}>
                               <Eye className="h-4 w-4 mr-1" /> Xem chi tiết
                             </Button>
+
                             {isAdmin && (
-                              <Button size="sm" variant="destructive" onClick={(e) => { e.stopPropagation(); handleDeleteRequest(req._id); }}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <>
+                                <Button size="sm" className="bg-orange-600 hover:bg-orange-700" onClick={async (e) => {
+                                  e.stopPropagation();
+
+                                  // compute available amount
+                                  const available = (req.raisedAmount || 0) - (req.withdrawnAmount || 0);
+                                  if (!available || available <= 0) return toast.error('Không còn tiền để rút');
+
+                                  const input = window.prompt(`Số tiền rút (VNĐ). Tối đa ${available.toLocaleString('vi-VN')}`, String(available));
+                                  if (!input) return;
+                                  const amount = Number(input.replace(/[^0-9.-]+/g, ''));
+                                  if (isNaN(amount) || amount <= 0) return toast.error('Số tiền không hợp lệ');
+                                  if (amount > available) return toast.error('Số tiền vượt quá số tiền có sẵn');
+
+                                  const note = window.prompt('Ghi chú (tùy chọn)');
+
+                                  try {
+                                    await assistanceAPI.withdraw(req._id, { amount, note });
+                                    toast.success('Rút tiền thành công');
+                                    fetchAssistance();
+                                  } catch (err: any) {
+                                    toast.error(err.response?.data?.message || 'Không thể rút tiền');
+                                  }
+                                }}>
+                                  Rút tiền
+                                </Button>
+
+                                <Button size="sm" variant="destructive" onClick={(e) => { e.stopPropagation(); handleDeleteRequest(req._id); }}>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
                             )}
                           </div>
                         </div>
@@ -374,7 +429,7 @@ export default function AssistancePage() {
             <div className="max-h-96 overflow-y-auto border rounded-lg bg-card">
               <div className="space-y-4 p-4">
                 {donations.map((d) => {
-                  const donor = d.isAnonymous ? 'Ẩn danh' : d.userId?.fullName || 'Người dùng';
+                  const donor = d.isAnonymous ? 'Ẩn danh' : d.userId?.fullName || (d as any).donorName || 'Người dùng';
                   const target = d.assistanceId?.title || d.campaignId?.title || 'Quyên góp chung';
                   return (
                     <div

@@ -31,6 +31,8 @@ interface AssistanceRequest {
   title: string;
   description: string;
   medicalCondition: string;
+  supportStartDate: string;
+  supportEndDate: string;
   requestedAmount: number;
   raisedAmount: number;
   urgency: string;
@@ -189,6 +191,11 @@ export default function AllSupportRequests() {
                           <p className="text-sm text-muted-foreground line-clamp-2">{request.description}</p>
                         </div>
 
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {new Date(request.supportStartDate).toLocaleDateString('vi-VN')} →{' '}
+                          {new Date(request.supportEndDate).toLocaleDateString('vi-VN')}
+                        </p>
+
                         <div className="space-y-3">
                           <div>
                             <div className="flex justify-between text-sm mb-1">
@@ -209,16 +216,18 @@ export default function AllSupportRequests() {
                           </div>
 
                           {/* NÚT ỦNG HỘ - NGĂN CHUYỂN TRANG */}
-                          <Button
-                            className="w-full bg-red-500 hover:bg-red-600 text-white"
-                            onClick={(e) => {
-                              e.stopPropagation(); // NGĂN CHUYỂN TRANG
-                              setSelectedAssistanceId(request._id); // MỞ MODAL
-                            }}
-                          >
-                            <Heart className="h-4 w-4 mr-2" />
-                            Ủng hộ ngay
-                          </Button>
+                          {request.raisedAmount < request.requestedAmount ? (
+                            <Button
+                              className="bg-red-500 text-white hover:bg-red-600 w-full"
+                              onClick={() => setSelectedAssistanceId(request._id)}
+                            >
+                              Ủng hộ ngay
+                            </Button>
+                          ) : (
+                            <div className="text-center py-3">
+                              <Badge className="bg-emerald-100 text-emerald-800">Đã nhận đủ hỗ trợ</Badge>
+                            </div>
+                          )}
                         </div>
                       </CardContent>
                     </Card>

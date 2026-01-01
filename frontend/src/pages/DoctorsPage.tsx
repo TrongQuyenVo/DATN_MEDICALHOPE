@@ -157,6 +157,12 @@ export default function DoctorsPage() {
                         {doctor.experience || 0} năm
                       </span>
                     </div>
+
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Giờ khám</span>
+                      <span className="font-semibold text-primary">{Number(doctor.volunteerHours || 0).toFixed(2)} giờ</span>
+                    </div>
+
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <MapPin className="w-4 h-4" />
                       <span className="font-medium text-foreground truncate">

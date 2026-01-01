@@ -21,15 +21,17 @@ const PaymentConfirmPage: React.FC = () => {
 
     // Kiểm tra kết quả từ VNPay
     if (queries.vnp_TransactionStatus === "00" && queries.vnp_ResponseCode === "00") {
-      // Thanh toán thành công → tạo donation
+      // Thanh toán thành công → xác nhận ở backend bằng txnRef
+      const txnRef = (queries.vnp_TxnRef as string) || paymentData.vnp_TxnRef || paymentData.txnRef;
+      if (!txnRef) {
+        toast.error("Không tìm thấy mã giao dịch");
+        localStorage.removeItem("pending_payment");
+        navigate("/payment-failed");
+        return;
+      }
+
       donationsAPI
-        .createConfirmed({
-          ...paymentData,
-          vnp_TxnRef: queries.vnp_TxnRef,
-          vnp_TransactionNo: queries.vnp_TransactionNo,
-          vnp_BankCode: queries.vnp_BankCode,
-          vnp_PayDate: queries.vnp_PayDate,
-        })
+        .confirmSuccess(txnRef)
         .then(() => {
           toast.success("Quyên góp thành công! Cảm ơn tấm lòng của bạn ❤️");
           localStorage.removeItem("pending_payment");
